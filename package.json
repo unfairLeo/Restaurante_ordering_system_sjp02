@@ -1,5 +1,5 @@
 {
-  "name": "restaurant_ordering_system",
+  "name": "pizza",
   "version": "1.0.0",
   "description": "Projeto da disciplina de Desenvolvimento Back-End, 4P - Engenharia de Software",
   "keywords": [
@@ -29,7 +29,11 @@
     "build": "tsc",
     "start": "node dist/server.js"
   },
+  "dependencies": {
+    "express": "^5.2.1"
+  },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/node": "^26.2.0",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2"
