@@ -18,7 +18,6 @@ app.get("/", (req, res) => {
 // =====================
 // Categories
 // =====================
-
 app.use("/categories", categoryRoutes);
 
 // =====================
@@ -69,7 +68,7 @@ app.post("/products", async (req, res) => {
 app.put("/products/:id", async (req, res) => {
     try {
         const product = await Product.update(
-            req.params.id, 
+            req.params.id,
             req.body
         );
 
