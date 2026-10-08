@@ -7,17 +7,6 @@ app.use(express.json());
 const pizzaCategoryId = randomUUID();
 const drinkCategoryId = randomUUID();
 
-//=====================
-//Root
-//=====================
-
-app.get("/", (req, res) => {
-    res.status(200).json({
-        message: "Restaurant Ordering System - API",
-        version: "1.0.0",
-    });
-});
-
 const categories = [
     {
         "id": pizzaCategoryId,
@@ -55,14 +44,22 @@ const products = [
     }
 ];
 
-//=====================
-//Categories
-//=====================
+// =====================
+// Root
+// =====================
+app.get("/", (req, res) => {
+    res.status(200).json({
+        message: "Restaurant Ordering System - API",
+        version: "1.0.0",
+    });
+});
 
+// =====================
+// Categories
+// =====================
 app.get("/categories", (req, res) => {
     res.status(200).json(categories);
 });
-
 
 app.get("/categories/:id", (req, res) => {
     const category = categories.find((category) => {
@@ -78,7 +75,7 @@ app.get("/categories/:id", (req, res) => {
     res.status(200).json(category);
 });
 
-app.post("/categories", (req, res) => {
+app.post("/categories/", (req, res) => {
     const category = {
         id: randomUUID(),
         ...req.body,
@@ -99,6 +96,7 @@ app.put("/categories/:id", (req, res) => {
             message: "Categoria não encontrada.",
         });
     }
+
     category.name = req.body.name;
     category.description = req.body.description;
 
@@ -115,19 +113,18 @@ app.delete("/categories/:id", (req, res) => {
             message: "Categoria não encontrada.",
         });
     }
-    
+
     const index = categories.indexOf(category);
     categories.splice(index, 1);
-    
+
     res.status(200).json({
-        message: "Caategoria removida com sucesso.",
+        message: "Categoria removida com sucesso.",
     });
 });
 
-//=====================
-//Products
-//=====================
-
+// =====================
+// Products
+// =====================
 app.get("/products", (req, res) => {
     res.status(200).json(products);
 });
@@ -139,14 +136,14 @@ app.get("/products/:id", (req, res) => {
 
     if (!product) {
         return res.status(404).json({
-            message: "Categoria não encontrada.",
+            message: "Produto não encontrado.",
         });
     }
 
     res.status(200).json(product);
 });
 
-app.post("/products", (req, res) => {
+app.post("/products/", (req, res) => {
     const product = {
         id: randomUUID(),
         ...req.body,
@@ -156,7 +153,7 @@ app.post("/products", (req, res) => {
 
     res.status(201).json(product);
 });
-// add put para fazer o update do produto
+
 app.put("/products/:id", (req, res) => {
     const product = products.find((product) => {
         return product.id == req.params.id
@@ -168,12 +165,13 @@ app.put("/products/:id", (req, res) => {
         });
     }
 
+    product.categoryId = req.body.categoryId;
     product.name = req.body.name;
     product.description = req.body.description;
     product.price = req.body.price;
 
     res.status(200).json(product);
-});
+}); 
 
 app.delete("/products/:id", (req, res) => {
     const product = products.find((product) => {
@@ -190,12 +188,8 @@ app.delete("/products/:id", (req, res) => {
     products.splice(index, 1);
 
     res.status(200).json({
-        message: "Produto removido com sucesso.",
+        message: "Produto removido com sucesso."
     });
-
-    products.push(product);
-
-    res.status(201).json(product);
 });
 
 export default app;
