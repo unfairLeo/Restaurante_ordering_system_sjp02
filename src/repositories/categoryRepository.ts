@@ -1,19 +1,9 @@
 import supabase from "../config/supabase.js";
-
-export interface Product {
-    id?: string;
-    categoryId: string;
-    name: string;
-    description: string;
-    price: number;
-    image: string;
-    available: boolean;
-    active: boolean;
-}
+import type { Category } from "../model/Category.js";
 
 async function findAll() {
     const { data, error } = await supabase
-        .from("products")
+        .from("categories")
         .select("*");
 
     if (error) {
@@ -25,7 +15,7 @@ async function findAll() {
 
 async function findById(id: string) {
     const { data, error } = await supabase
-        .from("products")
+        .from("categories")
         .select("*")
         .eq("id", id)
         .single();
@@ -37,10 +27,10 @@ async function findById(id: string) {
     return data;
 }
 
-async function create(product: Product) {
+async function create(category: Category) {
     const { data, error } = await supabase
-        .from("products")
-        .insert(product)
+        .from("categories")
+        .insert(category)
         .select()
         .single();
 
@@ -51,10 +41,10 @@ async function create(product: Product) {
     return data;
 }
 
-async function update(id: string, product: Product) {
+async function update(id: string, category: Category) {
     const { data, error } = await supabase
-        .from("products")
-        .update(product)
+        .from("categories")
+        .update(category)
         .eq("id", id)
         .select()
         .single();
@@ -68,7 +58,7 @@ async function update(id: string, product: Product) {
 
 async function remove(id: string) {
     const { data, error } = await supabase
-        .from("products")
+        .from("categories")
         .delete()
         .eq("id", id)
         .single();
@@ -82,10 +72,10 @@ async function remove(id: string) {
 
 async function searchByKeyword(keyword: string) {
     const { data, error } = await supabase
-        .from("products")
+        .from("categories")
         .select("*")
         .or(`name.ilike.%${keyword}%,description.ilike.%${keyword}%`)
-        .order("name", { ascending: true });
+        .order("display_order", { ascending: true });
 
     if (error) {
         throw error;
