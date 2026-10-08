@@ -1,5 +1,5 @@
 import supabase from "../config/supabase.js";
-import type { Category } from "../model/Category.js";
+import type { Category } from "../model/category.js";
 
 async function findAll() {
     const { data, error } = await supabase
