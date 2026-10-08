@@ -1,5 +1,6 @@
 import express from "express";
-import { randomUUID } from "node:crypto";
+import categoryRoutes from "./routes/categoryRoutes.js";
+import productRoutes from "./routes/productRoutes.js";
 
 const app = express();
 app.use(express.json());
@@ -191,5 +192,7 @@ app.delete("/products/:id", (req, res) => {
         message: "Produto removido com sucesso."
     });
 });
+app.use("/categories", categoryRoutes);
+app.use("/products", productRoutes);
 
 export default app;
