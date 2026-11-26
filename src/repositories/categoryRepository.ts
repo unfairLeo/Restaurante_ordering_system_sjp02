@@ -3,6 +3,18 @@ import type {
     CategoryCreateInput,
     CategoryUpdateInput,
 } from "../model/category.js";
+import { NotFoundError } from "../error/notFoundError.js";
+
+function rethrowQueryError(error: unknown, notFoundMessage: string): never {
+    if (typeof error === "object"
+        && error !== null
+        && "code" in error
+        && error.code === "PGRST116") {
+        throw new NotFoundError(notFoundMessage);
+    }
+
+    throw error;
+}
 
 async function findAll() {
     const { data, error } = await supabase
@@ -24,7 +36,11 @@ async function findById(id: string) {
         .single();
 
     if (error) {
-        throw error;
+        rethrowQueryError(error, "Categoria não encontrada.");
+    }
+
+    if (!data) {
+        throw new NotFoundError("Categoria não encontrada.");
     }
 
     return data;
@@ -47,6 +63,10 @@ async function create(category: CategoryCreateInput) {
         throw error;
     }
 
+    if (!data) {
+        throw new Error("Falha ao criar categoria.");
+    }
+
     return data;
 }
 
@@ -59,7 +79,11 @@ async function update(id: string, category: CategoryUpdateInput) {
         .single();
 
     if (error) {
-        throw error;
+        rethrowQueryError(error, "Categoria não encontrada.");
+    }
+
+    if (!data) {
+        throw new NotFoundError("Categoria não encontrada.");
     }
 
     return data;
@@ -73,7 +97,11 @@ async function remove(id: string) {
         .single();
 
     if (error) {
-        throw error;
+        rethrowQueryError(error, "Categoria não encontrada.");
+    }
+
+    if (!data) {
+        throw new NotFoundError("Categoria não encontrada.");
     }
 
     return data;

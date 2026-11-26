@@ -1,4 +1,6 @@
 import type { Request, Response } from "express";
+import { NotFoundError } from "../error/notFoundError.js";
+import { ValidationError } from "../error/ValidationError.js";
 import Category, {
     type Category as CategoryData,
     type CategoryCreateInput,
@@ -36,8 +38,10 @@ function parseCategoryFields(input: unknown): ParseResult<{
         return { error: "icon deve ser um texto ou null." };
     }
 
-    if (typeof body.display_order !== "number" || !Number.isInteger(body.display_order)) {
-        return { error: "display_order deve ser um número inteiro." };
+    if (typeof body.display_order !== "number"
+        || !Number.isInteger(body.display_order)
+        || body.display_order < 0) {
+        return { error: "display_order deve ser um número inteiro maior ou igual a zero." };
     }
 
     return {
@@ -90,10 +94,11 @@ function parseUpdateCategory(input: unknown): ParseResult<CategoryUpdateInput> {
 }
 
 function isNotFoundError(error: unknown): boolean {
-    return typeof error === "object"
-        && error !== null
-        && "code" in error
-        && error.code === "PGRST116";
+    return error instanceof NotFoundError
+        || (typeof error === "object"
+            && error !== null
+            && "code" in error
+            && error.code === "PGRST116");
 }
 
 async function getAll(req: Request, res: Response) {
@@ -171,6 +176,12 @@ async function create(req: Request, res: Response) {
     } catch (error) {
         console.log("Erro ao criar categoria: ", error);
 
+        if (error instanceof ValidationError) {
+            return res.status(400).json({
+                message: error.message,
+            });
+        }
+
         res.status(500).json({
             message: "Erro ao criar categoria."
         });
@@ -200,6 +211,12 @@ async function update(req: Request<{ id: string }>, res: Response) {
         res.status(200).json(category)
     } catch (error) {
         console.log("Erro ao atualizar categoria: ", error);
+
+        if (error instanceof ValidationError) {
+            return res.status(400).json({
+                message: error.message,
+            });
+        }
 
         const notFound = isNotFoundError(error);
         res.status(notFound ? 404 : 500).json({
