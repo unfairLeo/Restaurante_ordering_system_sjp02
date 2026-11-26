@@ -4,7 +4,6 @@ import type {
     OrderUpdateInput,
 } from "../model/order.js";
 import { NotFoundError } from "../error/notFoundError.js";
-import { rethrowDatabaseError, rethrowWriteError } from "./repositoryErrors.js";
 
 async function findAll() {
     const { data, error } = await supabase
@@ -24,10 +23,10 @@ async function findById(id: string) {
         .from("orders")
         .select("*")
         .eq("id", id)
-        .single();
+        .maybeSingle();
 
     if (error) {
-        rethrowDatabaseError(error, "Pedido não encontrado.");
+        throw error;
     }
 
     if (!data) {
@@ -48,7 +47,7 @@ async function create(order: OrderCreateInput) {
         .single();
 
     if (error) {
-        rethrowWriteError(error, "Produto informado não encontrado.");
+        throw error;
     }
 
     if (!data) {
@@ -64,10 +63,10 @@ async function update(id: string, order: OrderUpdateInput) {
         .update(order)
         .eq("id", id)
         .select()
-        .single();
+        .maybeSingle();
 
     if (error) {
-        rethrowDatabaseError(error, "Pedido não encontrado.", "Produto informado não encontrado.");
+        throw error;
     }
 
     if (!data) {
@@ -83,10 +82,10 @@ async function remove(id: string) {
         .delete()
         .eq("id", id)
         .select()
-        .single();
+        .maybeSingle();
 
     if (error) {
-        rethrowDatabaseError(error, "Pedido não encontrado.");
+        throw error;
     }
 
     if (!data) {
