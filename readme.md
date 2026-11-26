@@ -106,6 +106,7 @@ src/
 │   ├── categoryRoutes.ts
 │   ├── productRoutes.ts
 │   └── orderRoutes.ts
+├── openapi.ts       # Especificação OpenAPI usada pelo Swagger UI
 ├── app.ts           # Configuração do Express e registro das rotas
 ├── server.ts        # Inicialização do servidor
 └── tests/
@@ -179,6 +180,10 @@ npm run dev
 ```
 
 A API ficará disponível em `http://localhost:3000`. O servidor usa a porta `3000`, definida em `src/server.ts`.
+
+### Documentação Swagger
+
+Com a API em execução, acesse `http://localhost:3000/api-docs` para consultar e testar os endpoints documentados. A especificação OpenAPI fica em `src/openapi.ts`.
 
 ### Scripts disponíveis
 
