@@ -43,11 +43,11 @@ API REST para um sistema de **autoatendimento de restaurante**, desenvolvida com
 | `id` | UUID | Identificador único (gerado pelo banco) |
 | `categoryId` | UUID (FK) | Categoria à qual o produto pertence |
 | `name` | texto | Nome do produto |
-| `description` | texto | Descrição do produto |
+| `description` | texto (opcional) | Descrição do produto |
 | `price` | numérico | Preço do produto |
-| `image` | texto | URL/caminho da imagem |
-| `available` | booleano | Indica se o produto está disponível no momento |
-| `active` | booleano | Indica se o produto está ativo no cardápio |
+| `image` | texto (opcional) | URL/caminho da imagem |
+| `available` | booleano (padrão `true`) | Indica se o produto está disponível no momento |
+| `active` | booleano (padrão `true`) | Indica se o produto está ativo no cardápio |
 
 ### Order (pedido)
 
@@ -83,8 +83,6 @@ src/
 │   ├── CategoryController.ts
 │   ├── ProductController.ts
 │   └── OrderController.ts
-│   ├── requestValidation.ts
-│   └── respondWithError.ts
 ├── model/           # Tipos e estruturas das entidades
 │   ├── category.ts
 │   ├── product.ts
@@ -92,12 +90,9 @@ src/
 ├── repositories/    # Acesso e persistência dos dados no Supabase
 │   ├── categoryRepository.ts
 │   ├── productRepositories.ts
-│   ├── orderRepositories.ts
-│   └── repositoryErrors.ts
-├── error/           # Erros de validação, ausência e conflito
-│   ├── ValidationError.ts
-│   ├── notFoundError.ts
-│   └── conflictError.ts
+│   └── orderRepositories.ts
+├── error/           # Erros conhecidos da aplicação
+│   └── notFoundError.ts
 ├── routes/          # Definição dos endpoints
 │   ├── categoryRoutes.ts
 │   ├── productRoutes.ts
@@ -115,7 +110,7 @@ database/
 | **Controller** | Valida os dados, chama o repositório e define a resposta HTTP |
 | **Routes** | Associa método HTTP + caminho ao método do controller |
 | **Config** | Conexão com o Supabase |
-| **Error** | Representa erros de validação, registros ausentes e conflitos |
+| **Error** | Representa erros conhecidos tratados pelos controllers |
 
 ## 6. Configuração e execução
 
@@ -158,6 +153,7 @@ Outros scripts:
 |---|---|
 | `npm run dev` | Executa em modo desenvolvimento (recarrega ao salvar) |
 | `npm run build` | Compila o TypeScript para a pasta `dist/` |
+| `npm test` | Executa os testes automatizados da API |
 | `npm start` | Executa a versão compilada (`dist/server.js`) |
 
 ## 7. Variáveis de ambiente
@@ -243,7 +239,7 @@ create table orders (
 | GET | `/products` | Lista todos os produtos | – |
 | GET | `/products/:id` | Consulta um produto pelo ID | `id` na URL |
 | GET | `/products/search?keyword=` | Pesquisa por palavra-chave | `keyword` na query string |
-| POST | `/products` | Cadastra um produto | JSON: `categoryId`, `name`, `description`, `price`, `image`, `available`, `active` |
+| POST | `/products` | Cadastra um produto | JSON: `categoryId`, `name`, `price`; `description` e `image` são opcionais, assim como `available` e `active` (padrão `true`) |
 | PUT | `/products/:id` | Atualiza um produto | `id` na URL + JSON com os campos |
 | DELETE | `/products/:id` | Remove um produto | `id` na URL |
 
@@ -354,4 +350,4 @@ GET http://localhost:3000/orders/search?keyword=ana
 
 ## Testes da API
 
-Os endpoints foram testados com uma ferramenta de requisições HTTP (Postman / Insomnia / Thunder Client), verificando as operações GET, GET por ID, POST, PUT, DELETE e a pesquisa por palavra-chave, e conferindo a persistência dos dados no Supabase.
+Execute `npm test` para verificar as rotas, validações de entrada, respostas de sucesso e tratamento de erros. Os testes usam repositórios simulados e não fazem alterações no Supabase.
