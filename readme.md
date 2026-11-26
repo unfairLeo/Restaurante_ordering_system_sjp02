@@ -83,13 +83,21 @@ src/
 │   ├── CategoryController.ts
 │   ├── ProductController.ts
 │   └── OrderController.ts
-├── model/           # Representação das entidades (tipos) e consultas
+│   ├── requestValidation.ts
+│   └── respondWithError.ts
+├── model/           # Tipos e estruturas das entidades
 │   ├── category.ts
 │   ├── product.ts
 │   └── order.ts
 ├── repositories/    # Acesso e persistência dos dados no Supabase
 │   ├── categoryRepository.ts
-│   └── orderRepository.ts
+│   ├── productRepositories.ts
+│   ├── orderRepositories.ts
+│   └── repositoryErrors.ts
+├── error/           # Erros de validação, ausência e conflito
+│   ├── ValidationError.ts
+│   ├── notFoundError.ts
+│   └── conflictError.ts
 ├── routes/          # Definição dos endpoints
 │   ├── categoryRoutes.ts
 │   ├── productRoutes.ts
@@ -102,11 +110,12 @@ database/
 
 | Camada | Responsabilidade |
 |---|---|
-| **Model** | Descreve a estrutura de cada entidade |
+| **Model** | Descreve os tipos e estruturas de cada entidade |
 | **Repository** | Executa as consultas no Supabase/PostgreSQL |
-| **Controller** | Valida os dados, trata a requisição, chama o model/repository e define o código HTTP |
+| **Controller** | Valida os dados, chama o repositório e define a resposta HTTP |
 | **Routes** | Associa método HTTP + caminho ao método do controller |
 | **Config** | Conexão com o Supabase |
+| **Error** | Representa erros de validação, registros ausentes e conflitos |
 
 ## 6. Configuração e execução
 
@@ -255,8 +264,9 @@ create table orders (
 |---|---|
 | `200 OK` | Consulta, atualização ou exclusão realizada |
 | `201 Created` | Registro criado com sucesso |
-| `400 Bad Request` | Palavra-chave de pesquisa não informada ou dados inválidos no pedido (ex.: `quantity` menor ou igual a zero, `status` inexistente) |
-| `404 Not Found` | Registro não encontrado |
+| `400 Bad Request` | Palavra-chave, UUID ou dados enviados inválidos |
+| `404 Not Found` | Registro solicitado não encontrado |
+| `409 Conflict` | Exclusão impedida por registros relacionados |
 | `500 Internal Server Error` | Erro ao acessar o banco de dados |
 
 ## 10. Exemplos de requisições

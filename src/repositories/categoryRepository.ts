@@ -4,17 +4,7 @@ import type {
     CategoryUpdateInput,
 } from "../model/category.js";
 import { NotFoundError } from "../error/notFoundError.js";
-
-function rethrowQueryError(error: unknown, notFoundMessage: string): never {
-    if (typeof error === "object"
-        && error !== null
-        && "code" in error
-        && error.code === "PGRST116") {
-        throw new NotFoundError(notFoundMessage);
-    }
-
-    throw error;
-}
+import { rethrowDatabaseError } from "./repositoryErrors.js";
 
 async function findAll() {
     const { data, error } = await supabase
@@ -36,7 +26,7 @@ async function findById(id: string) {
         .single();
 
     if (error) {
-        rethrowQueryError(error, "Categoria não encontrada.");
+        rethrowDatabaseError(error, "Categoria não encontrada.");
     }
 
     if (!data) {
@@ -79,7 +69,7 @@ async function update(id: string, category: CategoryUpdateInput) {
         .single();
 
     if (error) {
-        rethrowQueryError(error, "Categoria não encontrada.");
+        rethrowDatabaseError(error, "Categoria não encontrada.");
     }
 
     if (!data) {
@@ -97,7 +87,12 @@ async function remove(id: string) {
         .single();
 
     if (error) {
-        rethrowQueryError(error, "Categoria não encontrada.");
+        rethrowDatabaseError(
+            error,
+            "Categoria não encontrada.",
+            undefined,
+            "Categoria não pode ser removida enquanto houver produtos vinculados.",
+        );
     }
 
     if (!data) {
