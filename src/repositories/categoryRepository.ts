@@ -1,5 +1,8 @@
 import supabase from "../config/supabase.js";
-import type { Category } from "../model/category.js";
+import type {
+    CategoryCreateInput,
+    CategoryUpdateInput,
+} from "../model/category.js";
 
 async function findAll() {
     const { data, error } = await supabase
@@ -27,10 +30,16 @@ async function findById(id: string) {
     return data;
 }
 
-async function create(category: Category) {
+async function create(category: CategoryCreateInput) {
     const { data, error } = await supabase
         .from("categories")
-        .insert(category)
+        .insert({
+            name: category.name,
+            description: category.description ?? null,
+            icon: category.icon ?? null,
+            display_order: category.display_order,
+            active: category.active ?? true,
+        })
         .select()
         .single();
 
@@ -41,7 +50,7 @@ async function create(category: Category) {
     return data;
 }
 
-async function update(id: string, category: Category) {
+async function update(id: string, category: CategoryUpdateInput) {
     const { data, error } = await supabase
         .from("categories")
         .update(category)
