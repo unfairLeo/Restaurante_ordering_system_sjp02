@@ -14,14 +14,22 @@ API REST para um sistema de **autoatendimento de restaurante**, desenvolvida com
 
 **Leonardo Ravache**
 
-## 3. Tecnologias utilizadas
+## 3. Tecnologias e requisitos
 
-- Node.js
-- TypeScript
-- Express
-- Supabase 
-- PostgreSQL
-- Git 
+| Tecnologia | Uso |
+|---|---|
+| Node.js 22 ou superior | Executa a API e o Supabase JavaScript SDK |
+| npm | Instala dependências e executa os scripts do projeto |
+| TypeScript 7 | Tipos e compilação para JavaScript |
+| Express 5 | Servidor HTTP e roteamento |
+| `@supabase/supabase-js` 2 | Acesso ao banco Supabase pela API |
+| PostgreSQL (Supabase) | Persistência relacional dos dados |
+| `dotenv` | Carrega variáveis do arquivo `.env` |
+| `tsx` | Executa TypeScript em desenvolvimento e nos testes |
+| `node:test` | Testes automatizados HTTP, incluído no Node.js |
+| Postman | Collection manual disponível na raiz do projeto |
+
+O Node.js 22+ é necessário porque a versão do Supabase SDK definida no lockfile exige essa versão mínima. O projeto foi compilado e testado localmente com Node.js 24.19.0.
 
 ## 4. Entidades e relacionamentos
 
@@ -31,10 +39,10 @@ API REST para um sistema de **autoatendimento de restaurante**, desenvolvida com
 |---|---|---|
 | `id` | UUID | Identificador único (gerado pelo banco) |
 | `name` | texto | Nome da categoria |
-| `description` | texto | Descrição da categoria |
-| `icon` | texto | Ícone da categoria |
-| `display_order` | inteiro | Ordem de exibição no cardápio |
-| `active` | booleano | Indica se a categoria está ativa |
+| `description` | texto anulável | Descrição da categoria |
+| `icon` | texto anulável | Ícone da categoria |
+| `display_order` | inteiro não negativo | Ordem de exibição no cardápio |
+| `active` | booleano (padrão `true`) | Indica se a categoria está ativa |
 
 ### Product (produto)
 
@@ -43,9 +51,9 @@ API REST para um sistema de **autoatendimento de restaurante**, desenvolvida com
 | `id` | UUID | Identificador único (gerado pelo banco) |
 | `categoryId` | UUID (FK) | Categoria à qual o produto pertence |
 | `name` | texto | Nome do produto |
-| `description` | texto (opcional) | Descrição do produto |
-| `price` | numérico | Preço do produto |
-| `image` | texto (opcional) | URL/caminho da imagem |
+| `description` | texto anulável | Descrição do produto |
+| `price` | numérico (até duas casas decimais) | Preço do produto |
+| `image` | texto anulável | URL/caminho da imagem |
 | `available` | booleano (padrão `true`) | Indica se o produto está disponível no momento |
 | `active` | booleano (padrão `true`) | Indica se o produto está ativo no cardápio |
 
@@ -92,126 +100,127 @@ src/
 │   ├── productRepositories.ts
 │   └── orderRepositories.ts
 ├── error/           # Erros conhecidos da aplicação
-│   └── notFoundError.ts
+│   ├── notFoundError.ts
+│   └── validationError.ts
 ├── routes/          # Definição dos endpoints
 │   ├── categoryRoutes.ts
 │   ├── productRoutes.ts
 │   └── orderRoutes.ts
 ├── app.ts           # Configuração do Express e registro das rotas
-└── server.ts        # Inicialização do servidor
+├── server.ts        # Inicialização do servidor
+└── tests/
+    ├── categoryTest.ts # Testes HTTP de categorias
+    ├── productTest.ts   # Testes HTTP de produtos
+    └── orderTest.ts     # Testes HTTP de pedidos
 database/
 └── schema.sql       # Script de criação das tabelas
+restaurant-ordering-system-API.postman_collection.json
+                    # Collection para testes manuais
 ```
+
+`src/server_copia.ts` é uma cópia antiga e não é usada pelos scripts; o ponto de entrada ativo é `src/server.ts`.
 
 | Camada | Responsabilidade |
 |---|---|
 | **Model** | Descreve os tipos e estruturas de cada entidade |
-| **Repository** | Executa as consultas no Supabase/PostgreSQL |
-| **Controller** | Valida os dados, chama o repositório e define a resposta HTTP |
+| **Repository** | Executa as consultas no Supabase/PostgreSQL e converte erros de ausência em `NotFoundError` |
+| **Controller** | Valida os dados inline, chama o repositório e define a resposta HTTP |
 | **Routes** | Associa método HTTP + caminho ao método do controller |
 | **Config** | Conexão com o Supabase |
-| **Error** | Representa erros conhecidos tratados pelos controllers |
+| **Error** | `NotFoundError` é usado; `ValidationError` está no projeto, mas as validações atuais são feitas inline nos controllers |
 
 ## 6. Configuração e execução
 
-**1. Clonar o repositório**
+### Pré-requisitos
+
+- Node.js 22 ou superior e npm.
+- Um projeto Supabase com acesso ao SQL Editor.
+- Git para clonar o repositório.
+
+Confira as versões instaladas:
+
+```bash
+node --version
+npm --version
+```
+
+### Instalação
 
 ```bash
 git clone https://github.com/unfairLeo/Restaurante_ordering_system_sjp02.git
 cd Restaurante_ordering_system_sjp02
+npm ci
 ```
 
-**2. Instalar as dependências**
+`npm ci` instala as versões registradas em `package-lock.json`. Use `npm install` apenas quando precisar alterar dependências.
 
-```bash
-npm install
+### Configurar o Supabase
+
+Copie `.env.example` para `.env` na raiz do projeto e preencha os valores com as credenciais do Supabase.
+
+PowerShell:
+
+```powershell
+Copy-Item .env.example .env
 ```
 
-**3. Configurar as variáveis de ambiente**
-
-Copie o arquivo de exemplo e preencha com as credenciais do seu projeto Supabase:
+macOS/Linux:
 
 ```bash
 cp .env.example .env
 ```
 
-**4. Criar o banco de dados**
+No SQL Editor do Supabase, execute [`database/schema.sql`](./database/schema.sql) uma vez em um banco novo. O script cria as três tabelas; ele não insere dados de exemplo.
 
-Execute o script da seção [8. Banco de dados](#8-banco-de-dados) no *SQL Editor* do Supabase.
-
-**5. Iniciar a aplicação**
+### Executar em desenvolvimento
 
 ```bash
 npm run dev
 ```
 
-A API ficará disponível em `http://localhost:3000`.
+A API ficará disponível em `http://localhost:3000`. O servidor usa a porta `3000`, definida em `src/server.ts`.
 
-Outros scripts:
+### Scripts disponíveis
 
 | Comando | Descrição |
 |---|---|
-| `npm run dev` | Executa em modo desenvolvimento (recarrega ao salvar) |
-| `npm run build` | Compila o TypeScript para a pasta `dist/` |
-| `npm test` | Executa os testes automatizados da API |
-| `npm start` | Executa a versão compilada (`dist/server.js`) |
+| `npm ci` | Instala as dependências travadas no lockfile |
+| `npm run dev` | Executa em desenvolvimento e reinicia ao salvar |
+| `npm test` | Executa os testes HTTP automatizados das três entidades |
+| `npm run build` | Compila os arquivos de `src/` para `dist/` |
+| `npm start` | Executa `dist/server.js`; rode `npm run build` antes |
+
+`npm test` não precisa de credenciais reais nem altera o banco: os testes simulam os repositórios de categorias, produtos e pedidos. Para validar persistência, configure o Supabase e execute a collection do Postman.
 
 ## 7. Variáveis de ambiente
 
 | Variável | Descrição |
 |---|---|
 | `SUPABASE_URL` | URL do projeto no Supabase |
-| `SUPABASE_SECRET_KEY` | Chave secreta de acesso ao Supabase |
+| `SUPABASE_SECRET_KEY` | Chave secreta do Supabase para uso exclusivo no servidor |
 
 Exemplo (`.env.example`):
 
 ```env
 SUPABASE_URL=https://seu-projeto.supabase.co
-SUPABASE_SECRET_KEY=sua_chave_secreta
+SUPABASE_SECRET_KEY=sua-chave-secreta
 ```
 
-> O arquivo `.env` contém credenciais reais e está no `.gitignore`. **Nunca** envie esse arquivo ao repositório.
+O código também aceita `SUPABASE_SERVICE_ROLE_KEY` como alternativa à chave secreta e nomes antigos em minúsculas (`supabaseUrl` e `supabaseSecretKey`). Prefira os nomes em maiúsculas do exemplo.
+
+> `.env` está no `.gitignore`. **Nunca** envie a chave secreta/service-role para o Git nem para uma aplicação frontend: ela concede acesso privilegiado ao banco. O cliente Supabase é inicializado ao importar a aplicação; sem as variáveis exigidas, o servidor não inicia.
 
 ## 8. Banco de dados
 
-Tabelas utilizadas: `categories`, `products` e `orders`. Script para reproduzir a estrutura no Supabase/PostgreSQL (também disponível em `database/schema.sql`):
-
-```sql
-create table categories (
-    id            uuid primary key default gen_random_uuid(),
-    name          text not null,
-    description   text,
-    icon          text,
-    display_order integer not null default 0,
-    active        boolean not null default true
-);
-
-create table products (
-    id            uuid primary key default gen_random_uuid(),
-    "categoryId"  uuid not null references categories(id) on delete restrict,
-    name          text not null,
-    description   text,
-    price         numeric(10, 2) not null check (price >= 0),
-    image         text,
-    available     boolean not null default true,
-    active        boolean not null default true
-);
-
-create table orders (
-    id            uuid primary key default gen_random_uuid(),
-    customer_name text not null,
-    product_id    uuid not null references products(id) on delete restrict,
-    quantity      integer not null check (quantity > 0),
-    status        text not null default 'pending'
-                  check (status in ('pending', 'preparing', 'ready', 'delivered')),
-    created_at    timestamptz not null default now()
-);
-```
+O schema SQL está em [`database/schema.sql`](./database/schema.sql). Execute-o pelo SQL Editor do Supabase em um banco novo.
 
 - Os identificadores são **UUID**, gerados automaticamente pelo banco.
 - `products."categoryId"` é **chave estrangeira** para `categories.id`.
 - `orders.product_id` é **chave estrangeira** para `products.id`.
 - Com `on delete restrict`, não é possível excluir uma categoria que ainda possua produtos, nem um produto que ainda possua pedidos.
+- O nome `"categoryId"` é sensível a maiúsculas/minúsculas no PostgreSQL e precisa permanecer entre aspas no schema.
+- O preço é armazenado como `numeric(10, 2)`; quantidades de pedidos devem ser inteiros maiores que zero.
+- Não há carga inicial (seed): crie primeiro uma categoria, depois um produto ligado a ela e, por fim, um pedido ligado ao produto.
 
 ## 9. Documentação dos endpoints
 
@@ -228,8 +237,8 @@ create table orders (
 | GET | `/categories` | Lista todas as categorias | – |
 | GET | `/categories/:id` | Consulta uma categoria pelo ID | `id` na URL |
 | GET | `/categories/search?keyword=` | Pesquisa por palavra-chave (nome ou descrição) | `keyword` na query string |
-| POST | `/categories` | Cadastra uma categoria | JSON: `name`, `description`, `icon`, `display_order`, `active` |
-| PUT | `/categories/:id` | Atualiza uma categoria | `id` na URL + JSON com os campos |
+| POST | `/categories` | Cadastra uma categoria | `name` e `display_order` obrigatórios; `description`, `icon` e `active` opcionais |
+| PUT | `/categories/:id` | Atualiza uma categoria | `id` na URL + `name`, `display_order` e `active`; descrição/ícone opcionais |
 | DELETE | `/categories/:id` | Remove uma categoria | `id` na URL |
 
 ### Produtos
@@ -240,7 +249,7 @@ create table orders (
 | GET | `/products/:id` | Consulta um produto pelo ID | `id` na URL |
 | GET | `/products/search?keyword=` | Pesquisa por palavra-chave | `keyword` na query string |
 | POST | `/products` | Cadastra um produto | JSON: `categoryId`, `name`, `price`; `description` e `image` são opcionais, assim como `available` e `active` (padrão `true`) |
-| PUT | `/products/:id` | Atualiza um produto | `id` na URL + JSON com os campos |
+| PUT | `/products/:id` | Atualiza um produto | `id` na URL + `categoryId`, `name`, `price`, `available` e `active`; descrição/imagem opcionais |
 | DELETE | `/products/:id` | Remove um produto | `id` na URL |
 
 ### Pedidos
@@ -251,7 +260,7 @@ create table orders (
 | GET | `/orders/:id` | Consulta um pedido pelo ID | `id` na URL |
 | GET | `/orders/search?keyword=` | Pesquisa pedidos pelo nome do cliente | `keyword` na query string |
 | POST | `/orders` | Cadastra um pedido | JSON: `customer_name`, `product_id`, `quantity`, `status` (opcional, padrão `pending`) |
-| PUT | `/orders/:id` | Atualiza um pedido | `id` na URL + JSON com os campos |
+| PUT | `/orders/:id` | Atualiza um pedido | `id` na URL + `customer_name`, `product_id` e `quantity`; `status` opcional (padrão `pending`) |
 | DELETE | `/orders/:id` | Remove um pedido | `id` na URL |
 
 ### Códigos de resposta HTTP
@@ -260,10 +269,10 @@ create table orders (
 |---|---|
 | `200 OK` | Consulta, atualização ou exclusão realizada |
 | `201 Created` | Registro criado com sucesso |
-| `400 Bad Request` | Palavra-chave, UUID ou dados enviados inválidos |
-| `404 Not Found` | Registro solicitado não encontrado |
+| `400 Bad Request` | JSON, palavra-chave, UUID ou dados inválidos; categoria/produto relacionado inexistente |
+| `404 Not Found` | Rota ou registro solicitado não encontrado |
 | `409 Conflict` | Exclusão impedida por registros relacionados |
-| `500 Internal Server Error` | Erro ao acessar o banco de dados |
+| `500 Internal Server Error` | Erro inesperado da aplicação ou do banco de dados |
 
 ## 10. Exemplos de requisições
 
@@ -348,6 +357,24 @@ GET http://localhost:3000/products/search?keyword=margherita
 GET http://localhost:3000/orders/search?keyword=ana
 ```
 
-## Testes da API
+Substitua `UUID-DA-CATEGORIA` e `UUID-DO-PRODUTO` por UUIDs existentes no Supabase. Os exemplos de payload não criam automaticamente os registros relacionados.
 
-Execute `npm test` para verificar as rotas, validações de entrada, respostas de sucesso e tratamento de erros. Os testes usam repositórios simulados e não fazem alterações no Supabase.
+## 11. Postman e validação
+
+Importe [`restaurant-ordering-system-API.postman_collection.json`](./restaurant-ordering-system-API.postman_collection.json) no Postman. A collection usa `http://localhost:3000` como `baseUrl`; configure também `categoryId`, `productId` e `orderId` com UUIDs existentes antes de testar endpoints dependentes desses registros.
+
+Execute os testes automatizados e a compilação:
+
+```bash
+npm test
+npm run build
+```
+
+Os testes HTTP em `src/tests/` usam os repositórios simulados para validar as rotas, payloads, validações e respostas de categorias, produtos e pedidos sem escrever no banco. Eles não comprovam a conexão real com o Supabase. A validação de persistência requer credenciais válidas, schema aplicado e execução manual da collection.
+
+## 12. Limitações conhecidas
+
+- A API não implementa autenticação, autorização nem middleware CORS. Não a exponha publicamente sem controles adequados.
+- A chave secreta do Supabase é carregada no servidor; proteja as rotas e mantenha essa chave fora do cliente.
+- Um pedido representa um único produto e uma quantidade; não há carrinho nem múltiplos itens por pedido.
+- Não há migrations, seed automático ou testes de integração contra uma instância real do Supabase.
