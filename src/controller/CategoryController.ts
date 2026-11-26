@@ -1,235 +1,136 @@
 import type { Request, Response } from "express";
-import Category, {
-    type Category as CategoryData,
-    type CategoryCreateInput,
-    type CategoryUpdateInput,
+import CategoryRepository from "../repositories/categoryRepository.js";
+import type {
+    CategoryCreateInput,
+    CategoryUpdateInput,
 } from "../model/category.js";
+import { ValidationError } from "../error/ValidationError.js";
+import { parseKeyword, parseObjectBody, parseUuid } from "./requestValidation.js";
+import { respondWithError } from "./respondWithError.js";
 
-type CategoryBaseInput = Pick<
-    CategoryData,
+type CategoryFields = Pick<
+    CategoryUpdateInput,
     "name" | "description" | "icon" | "display_order"
 >;
 
-type ParseResult<T> =
-    | { value: T; error?: never }
-    | { value?: never; error: string };
-
-function parseCategoryFields(input: unknown): ParseResult<{
+function parseCategoryFields(input: unknown): {
     body: Record<string, unknown>;
-    value: CategoryBaseInput;
-}> {
-    if (typeof input !== "object" || input === null || Array.isArray(input)) {
-        return { error: "Os dados da categoria devem ser um objeto." };
-    }
-
-    const body = input as Record<string, unknown>;
+    value: CategoryFields;
+} {
+    const body = parseObjectBody(input, "categoria");
 
     if (typeof body.name !== "string" || body.name.trim() === "") {
-        return { error: "name é obrigatório." };
+        throw new ValidationError("name é obrigatório.");
     }
 
-    if (body.description !== undefined && body.description !== null && typeof body.description !== "string") {
-        return { error: "description deve ser um texto ou null." };
+    if (body.description !== undefined
+        && body.description !== null
+        && typeof body.description !== "string") {
+        throw new ValidationError("description deve ser um texto ou null.");
     }
 
     if (body.icon !== undefined && body.icon !== null && typeof body.icon !== "string") {
-        return { error: "icon deve ser um texto ou null." };
+        throw new ValidationError("icon deve ser um texto ou null.");
     }
 
-    if (typeof body.display_order !== "number" || !Number.isInteger(body.display_order)) {
-        return { error: "display_order deve ser um número inteiro." };
+    if (typeof body.display_order !== "number"
+        || !Number.isInteger(body.display_order)
+        || body.display_order < 0) {
+        throw new ValidationError(
+            "display_order deve ser um número inteiro maior ou igual a zero.",
+        );
     }
 
     return {
+        body,
         value: {
-            body,
-            value: {
-                name: body.name.trim(),
-                description: body.description ?? null,
-                icon: body.icon ?? null,
-                display_order: body.display_order,
-            },
+            name: body.name.trim(),
+            description: body.description ?? null,
+            icon: body.icon ?? null,
+            display_order: body.display_order,
         },
     };
 }
 
-function parseCreateCategory(input: unknown): ParseResult<CategoryCreateInput> {
-    const parsed = parseCategoryFields(input);
-
-    if (!parsed.value) {
-        return { error: parsed.error };
-    }
-
-    const { body, value } = parsed.value;
+function parseCreateCategory(input: unknown): CategoryCreateInput {
+    const { body, value } = parseCategoryFields(input);
 
     if (body.active !== undefined && typeof body.active !== "boolean") {
-        return { error: "active deve ser true ou false." };
+        throw new ValidationError("active deve ser true ou false.");
     }
 
-    return {
-        value: body.active === undefined ? value : { ...value, active: body.active },
-    };
+    return body.active === undefined ? value : { ...value, active: body.active };
 }
 
-function parseUpdateCategory(input: unknown): ParseResult<CategoryUpdateInput> {
-    const parsed = parseCategoryFields(input);
-
-    if (!parsed.value) {
-        return { error: parsed.error };
-    }
-
-    const { body, value } = parsed.value;
+function parseUpdateCategory(input: unknown): CategoryUpdateInput {
+    const { body, value } = parseCategoryFields(input);
 
     if (typeof body.active !== "boolean") {
-        return { error: "active deve ser true ou false." };
+        throw new ValidationError("active deve ser true ou false.");
     }
 
-    return {
-        value: { ...value, active: body.active },
-    };
+    return { ...value, active: body.active };
 }
 
-function isNotFoundError(error: unknown): boolean {
-    return typeof error === "object"
-        && error !== null
-        && "code" in error
-        && error.code === "PGRST116";
-}
-
-async function getAll(req: Request, res: Response) {
+async function getAll(_req: Request, res: Response) {
     try {
-        const categories = await Category.findAll();
-
-        res.status(200).json(categories)
+        const categories = await CategoryRepository.findAll();
+        return res.status(200).json(categories);
     } catch (error) {
-        console.log("Erro ao buscar categorias: ", error);
-
-        res.status(500).json({
-            message: "Erro ao buscar categorias."
-        });
+        respondWithError(res, error, "Erro ao buscar categorias.");
     }
 }
 
 async function getByKeyword(req: Request, res: Response) {
-    const { keyword } = req.query;
-
-    if (!keyword || typeof keyword != "string") {
-        return res.status(400).json({
-            message: "Palavra-chave não informada."
-        });
-    }
-
     try {
-        const categories = await Category.searchByKeyword(keyword);
-
-        res.status(200).json(categories);
+        const keyword = parseKeyword(req.query.keyword);
+        const categories = await CategoryRepository.searchByKeyword(keyword);
+        return res.status(200).json(categories);
     } catch (error) {
-        console.log("Erro ao pesquisar categorias: ", error);
-
-        res.status(500).json({
-            message: "Erro ao pesquisar categorias.",
-        });
+        respondWithError(res, error, "Erro ao pesquisar categorias.");
     }
 }
 
 async function getById(req: Request<{ id: string }>, res: Response) {
-    const { id } = req.params;
-
-    if (!id) {
-        return res.status(404).json({
-            message: "ID da categoria não informado."
-        });
-    }
-
     try {
-        const category = await Category.findById(id);
-
-        res.status(200).json(category)
+        const id = parseUuid(req.params.id, "ID da categoria");
+        const category = await CategoryRepository.findById(id);
+        return res.status(200).json(category);
     } catch (error) {
-        console.log("Erro ao buscar categoria: ", error);
-
-        const notFound = isNotFoundError(error);
-        res.status(notFound ? 404 : 500).json({
-            message: notFound ? "Categoria não encontrada." : "Erro ao buscar categoria."
-        });
+        respondWithError(res, error, "Erro ao buscar categoria.");
     }
 }
 
 async function create(req: Request, res: Response) {
-    const parsedCategory = parseCreateCategory(req.body);
-
-    if (!parsedCategory.value) {
-        return res.status(400).json({
-            message: parsedCategory.error
-        });
-    }
-
     try {
-        const category = await Category.create(parsedCategory.value);
-
-        res.status(201).json(category)
+        const category = parseCreateCategory(req.body);
+        const createdCategory = await CategoryRepository.create(category);
+        return res.status(201).json(createdCategory);
     } catch (error) {
-        console.log("Erro ao criar categoria: ", error);
-
-        res.status(500).json({
-            message: "Erro ao criar categoria."
-        });
+        respondWithError(res, error, "Erro ao criar categoria.");
     }
 }
 
 async function update(req: Request<{ id: string }>, res: Response) {
-    const { id } = req.params;
-
-    if (!id) {
-        return res.status(404).json({
-            message: "ID da categoria não informado."
-        });
-    }
-
-    const parsedCategory = parseUpdateCategory(req.body);
-
-    if (!parsedCategory.value) {
-        return res.status(400).json({
-            message: parsedCategory.error
-        });
-    }
-
     try {
-        const category = await Category.update(id, parsedCategory.value);
-
-        res.status(200).json(category)
+        const id = parseUuid(req.params.id, "ID da categoria");
+        const category = parseUpdateCategory(req.body);
+        const updatedCategory = await CategoryRepository.update(id, category);
+        return res.status(200).json(updatedCategory);
     } catch (error) {
-        console.log("Erro ao atualizar categoria: ", error);
-
-        const notFound = isNotFoundError(error);
-        res.status(notFound ? 404 : 500).json({
-            message: notFound ? "Categoria não encontrada." : "Erro ao atualizar categoria."
-        });
+        respondWithError(res, error, "Erro ao atualizar categoria.");
     }
 }
 
 async function remove(req: Request<{ id: string }>, res: Response) {
-    const { id } = req.params;
-
-    if (!id) {
-        return res.status(404).json({
-            message: "ID da categoria não informado."
-        });
-    }
-
     try {
-        await Category.remove(id);
-
-        res.status(200).json({
-            message: "Categoria removida com sucesso."
-        })
-    } catch (error) {
-        console.log("Erro ao excluir categoria: ", error);
-
-        const notFound = isNotFoundError(error);
-        res.status(notFound ? 404 : 500).json({
-            message: notFound ? "Categoria não encontrada." : "Erro ao excluir categoria."
+        const id = parseUuid(req.params.id, "ID da categoria");
+        await CategoryRepository.remove(id);
+        return res.status(200).json({
+            message: "Categoria removida com sucesso.",
         });
+    } catch (error) {
+        respondWithError(res, error, "Erro ao excluir categoria.");
     }
 }
 
@@ -239,5 +140,5 @@ export default {
     getById,
     create,
     update,
-    remove
-}
+    remove,
+};

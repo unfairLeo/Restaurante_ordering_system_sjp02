@@ -1,5 +1,10 @@
 import supabase from "../config/supabase.js";
-import type { Product } from "../model/product.js";
+import type {
+    ProductCreateInput,
+    ProductUpdateInput,
+} from "../model/product.js";
+import { NotFoundError } from "../error/notFoundError.js";
+import { rethrowDatabaseError, rethrowWriteError } from "./repositoryErrors.js";
 
 async function findAll() {
     const { data, error } = await supabase
@@ -21,13 +26,17 @@ async function findById(id: string) {
         .single();
 
     if (error) {
-        throw error;
+        rethrowDatabaseError(error, "Produto não encontrado.");
+    }
+
+    if (!data) {
+        throw new NotFoundError("Produto não encontrado.");
     }
 
     return data;
 }
 
-async function create(product: Product) {
+async function create(product: ProductCreateInput) {
     const { data, error } = await supabase
         .from("products")
         .insert(product)
@@ -35,13 +44,17 @@ async function create(product: Product) {
         .single();
 
     if (error) {
-        throw error;
+        rethrowWriteError(error, "Categoria informada não encontrada.");
+    }
+
+    if (!data) {
+        throw new Error("Falha ao criar produto.");
     }
 
     return data;
 }
 
-async function update(id: string, product: Product) {
+async function update(id: string, product: ProductUpdateInput) {
     const { data, error } = await supabase
         .from("products")
         .update(product)
@@ -50,7 +63,11 @@ async function update(id: string, product: Product) {
         .single();
 
     if (error) {
-        throw error;
+        rethrowDatabaseError(error, "Produto não encontrado.", "Categoria informada não encontrada.");
+    }
+
+    if (!data) {
+        throw new NotFoundError("Produto não encontrado.");
     }
 
     return data;
@@ -64,7 +81,16 @@ async function remove(id: string) {
         .single();
 
     if (error) {
-        throw error;
+        rethrowDatabaseError(
+            error,
+            "Produto não encontrado.",
+            undefined,
+            "Produto não pode ser removido enquanto houver pedidos vinculados.",
+        );
+    }
+
+    if (!data) {
+        throw new NotFoundError("Produto não encontrado.");
     }
 
     return data;

@@ -1,169 +1,109 @@
 import type { Request, Response } from "express";
-import Order from "../model/order.js";
+import OrderRepository from "../repositories/orderRepositories.js";
+import type { OrderStatus, OrderUpdateInput } from "../model/order.js";
+import { ValidationError } from "../error/ValidationError.js";
+import { parseKeyword, parseObjectBody, parseUuid } from "./requestValidation.js";
+import { respondWithError } from "./respondWithError.js";
 
-const VALID_STATUS = ["pending", "preparing", "ready", "delivered"];
+const VALID_ORDER_STATUSES = new Set<string>([
+    "pending",
+    "preparing",
+    "ready",
+    "delivered",
+]);
 
-function validateOrder(body: any): string | null {
-    if (!body || typeof body.customer_name !== "string" || body.customer_name.trim() === "") {
-        return "customer_name é obrigatório.";
-    }
-
-    if (typeof body.product_id !== "string" || body.product_id.trim() === "") {
-        return "product_id é obrigatório.";
-    }
-
-    if (!Number.isInteger(body.quantity) || body.quantity <= 0) {
-        return "quantity deve ser um inteiro maior que zero.";
-    }
-
-    if (body.status !== undefined && !VALID_STATUS.includes(body.status)) {
-        return "status deve ser: pending, preparing, ready ou delivered.";
-    }
-
-    return null;
+function isOrderStatus(value: unknown): value is OrderStatus {
+    return typeof value === "string" && VALID_ORDER_STATUSES.has(value);
 }
 
-async function getAll(req: Request, res: Response) {
+function parseOrder(input: unknown): OrderUpdateInput {
+    const body = parseObjectBody(input, "pedido");
+
+    if (typeof body.customer_name !== "string" || body.customer_name.trim() === "") {
+        throw new ValidationError("customer_name é obrigatório.");
+    }
+
+    const productId = parseUuid(body.product_id, "product_id");
+
+    if (typeof body.quantity !== "number"
+        || !Number.isInteger(body.quantity)
+        || body.quantity <= 0) {
+        throw new ValidationError("quantity deve ser um inteiro maior que zero.");
+    }
+
+    if (body.status !== undefined && !isOrderStatus(body.status)) {
+        throw new ValidationError(
+            "status deve ser: pending, preparing, ready ou delivered.",
+        );
+    }
+
+    return {
+        customer_name: body.customer_name.trim(),
+        product_id: productId,
+        quantity: body.quantity,
+        status: body.status === undefined ? "pending" : body.status,
+    };
+}
+
+async function getAll(_req: Request, res: Response) {
     try {
-        const orders = await Order.findAll();
-
-        res.status(200).json(orders);
+        const orders = await OrderRepository.findAll();
+        return res.status(200).json(orders);
     } catch (error) {
-        console.log("Erro ao buscar pedidos: ", error);
-
-        res.status(500).json({
-            message: "Erro ao buscar pedidos."
-        });
+        respondWithError(res, error, "Erro ao buscar pedidos.");
     }
 }
 
 async function getByKeyword(req: Request, res: Response) {
-    const { keyword } = req.query;
-
-    if (!keyword || typeof keyword != "string") {
-        return res.status(400).json({
-            message: "Palavra-chave não informada."
-        });
-    }
-
     try {
-        const orders = await Order.searchByKeyword(keyword);
-
-        res.status(200).json(orders);
+        const keyword = parseKeyword(req.query.keyword);
+        const orders = await OrderRepository.searchByKeyword(keyword);
+        return res.status(200).json(orders);
     } catch (error) {
-        console.log("Erro ao pesquisar pedidos: ", error);
-
-        res.status(500).json({
-            message: "Erro ao pesquisar pedidos.",
-        });
+        respondWithError(res, error, "Erro ao pesquisar pedidos.");
     }
 }
 
 async function getById(req: Request<{ id: string }>, res: Response) {
-    const { id } = req.params;
-
-    if (!id) {
-        return res.status(404).json({
-            message: "ID do pedido não informado."
-        });
-    }
-
     try {
-        const order = await Order.findById(id);
-
-        res.status(200).json(order);
+        const id = parseUuid(req.params.id, "ID do pedido");
+        const order = await OrderRepository.findById(id);
+        return res.status(200).json(order);
     } catch (error) {
-        console.log("Erro ao buscar pedido: ", error);
-
-        res.status(404).json({
-            message: "Pedido não encontrado."
-        });
+        respondWithError(res, error, "Erro ao buscar pedido.");
     }
 }
 
 async function create(req: Request, res: Response) {
-    const validationError = validateOrder(req.body);
-
-    if (validationError) {
-        return res.status(400).json({
-            message: validationError
-        });
-    }
-
     try {
-        const order = await Order.create({
-            customer_name: req.body.customer_name.trim(),
-            product_id: req.body.product_id,
-            quantity: req.body.quantity,
-            status: req.body.status ?? "pending",
-        });
-
-        res.status(201).json(order);
+        const order = parseOrder(req.body);
+        const createdOrder = await OrderRepository.create(order);
+        return res.status(201).json(createdOrder);
     } catch (error) {
-        console.log("Erro ao criar pedido: ", error);
-
-        res.status(500).json({
-            message: "Erro ao criar pedido."
-        });
+        respondWithError(res, error, "Erro ao criar pedido.");
     }
 }
 
 async function update(req: Request<{ id: string }>, res: Response) {
-    const { id } = req.params;
-
-    if (!id) {
-        return res.status(404).json({
-            message: "ID do pedido não informado."
-        });
-    }
-
-    const validationError = validateOrder(req.body);
-
-    if (validationError) {
-        return res.status(400).json({
-            message: validationError
-        });
-    }
-
     try {
-        const order = await Order.update(id, {
-            customer_name: req.body.customer_name.trim(),
-            product_id: req.body.product_id,
-            quantity: req.body.quantity,
-            status: req.body.status ?? "pending",
-        });
-
-        res.status(200).json(order);
+        const id = parseUuid(req.params.id, "ID do pedido");
+        const order = parseOrder(req.body);
+        const updatedOrder = await OrderRepository.update(id, order);
+        return res.status(200).json(updatedOrder);
     } catch (error) {
-        console.log("Erro ao atualizar pedido: ", error);
-
-        res.status(404).json({
-            message: "Pedido não encontrado."
-        });
+        respondWithError(res, error, "Erro ao atualizar pedido.");
     }
 }
 
 async function remove(req: Request<{ id: string }>, res: Response) {
-    const { id } = req.params;
-
-    if (!id) {
-        return res.status(404).json({
-            message: "ID do pedido não informado."
-        });
-    }
-
     try {
-        await Order.remove(id);
-
-        res.status(200).json({
-            message: "Pedido removido com sucesso."
+        const id = parseUuid(req.params.id, "ID do pedido");
+        await OrderRepository.remove(id);
+        return res.status(200).json({
+            message: "Pedido removido com sucesso.",
         });
     } catch (error) {
-        console.log("Erro ao excluir pedido: ", error);
-
-        res.status(404).json({
-            message: "Pedido não encontrado."
-        });
+        respondWithError(res, error, "Erro ao excluir pedido.");
     }
 }
 
@@ -173,5 +113,5 @@ export default {
     getById,
     create,
     update,
-    remove
+    remove,
 };

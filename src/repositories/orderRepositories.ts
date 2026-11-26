@@ -1,5 +1,10 @@
 import supabase from "../config/supabase.js";
-import type { Order } from "../model/order.js";
+import type {
+    OrderCreateInput,
+    OrderUpdateInput,
+} from "../model/order.js";
+import { NotFoundError } from "../error/notFoundError.js";
+import { rethrowDatabaseError, rethrowWriteError } from "./repositoryErrors.js";
 
 async function findAll() {
     const { data, error } = await supabase
@@ -22,27 +27,38 @@ async function findById(id: string) {
         .single();
 
     if (error) {
-        throw error;
+        rethrowDatabaseError(error, "Pedido não encontrado.");
+    }
+
+    if (!data) {
+        throw new NotFoundError("Pedido não encontrado.");
     }
 
     return data;
 }
 
-async function create(order: Order) {
+async function create(order: OrderCreateInput) {
     const { data, error } = await supabase
         .from("orders")
-        .insert(order)
+        .insert({
+            ...order,
+            status: order.status ?? "pending",
+        })
         .select()
         .single();
 
     if (error) {
-        throw error;
+        rethrowWriteError(error, "Produto informado não encontrado.");
+    }
+
+    if (!data) {
+        throw new Error("Falha ao criar pedido.");
     }
 
     return data;
 }
 
-async function update(id: string, order: Order) {
+async function update(id: string, order: OrderUpdateInput) {
     const { data, error } = await supabase
         .from("orders")
         .update(order)
@@ -51,7 +67,11 @@ async function update(id: string, order: Order) {
         .single();
 
     if (error) {
-        throw error;
+        rethrowDatabaseError(error, "Pedido não encontrado.", "Produto informado não encontrado.");
+    }
+
+    if (!data) {
+        throw new NotFoundError("Pedido não encontrado.");
     }
 
     return data;
@@ -66,7 +86,11 @@ async function remove(id: string) {
         .single();
 
     if (error) {
-        throw error;
+        rethrowDatabaseError(error, "Pedido não encontrado.");
+    }
+
+    if (!data) {
+        throw new NotFoundError("Pedido não encontrado.");
     }
 
     return data;
