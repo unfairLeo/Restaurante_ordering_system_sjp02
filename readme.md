@@ -12,7 +12,7 @@ API REST para um sistema de **autoatendimento de restaurante**, desenvolvida com
 
 ## 2. Identificação do estudante
 
-**Leonardo Ravache**
+**Leonardo Ravache e Felipe Rigonato**
 
 ## 3. Tecnologias e requisitos
 
