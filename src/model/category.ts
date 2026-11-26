@@ -3,11 +3,16 @@ import supabase from "../config/supabase.js";
 export interface Category {
     id?: string;
     name: string;
-    description: string;
-    icon: string;
+    description: string | null;
+    icon: string | null;
     display_order: number;
     active: boolean;
 }
+
+export type CategoryCreateInput = Pick<Category, "name" | "display_order">
+    & Partial<Pick<Category, "description" | "icon" | "active">>;
+
+export type CategoryUpdateInput = Omit<Category, "id">;
 
 
 async function findAll() {
@@ -36,16 +41,16 @@ async function findById(id: string) {
     return data;
 }
 
-async function create(category: {
-    name: string;
-    description: string;
-    icon: string;
-    display_order: number;
-    active: boolean;
-}) {
+async function create(category: CategoryCreateInput) {
     const { data, error } = await supabase
         .from("categories")
-        .insert(category)
+        .insert({
+            name: category.name,
+            description: category.description ?? null,
+            icon: category.icon ?? null,
+            display_order: category.display_order,
+            active: category.active ?? true,
+        })
         .select()
         .single();
 
@@ -58,13 +63,7 @@ async function create(category: {
 
 async function update(
     id: string,
-    category: {
-        name: string;
-        description: string;
-        icon: string;
-        display_order: number;
-        active: boolean;
-    }) {
+    category: CategoryUpdateInput) {
     const { data, error } = await supabase
         .from("categories")
         .update(category)
