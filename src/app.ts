@@ -1,11 +1,14 @@
 import express from "express";
 import type { ErrorRequestHandler } from "express";
+import swaggerUi from "swagger-ui-express";
+import { openApiSpec } from "./openapi.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 
 const app = express();
 app.use(express.json());
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(openApiSpec));
 
 // =====================
 // Root
