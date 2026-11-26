@@ -4,7 +4,6 @@ import type {
     ProductUpdateInput,
 } from "../model/product.js";
 import { NotFoundError } from "../error/notFoundError.js";
-import { rethrowDatabaseError, rethrowWriteError } from "./repositoryErrors.js";
 
 async function findAll() {
     const { data, error } = await supabase
@@ -23,10 +22,10 @@ async function findById(id: string) {
         .from("products")
         .select("*")
         .eq("id", id)
-        .single();
+        .maybeSingle();
 
     if (error) {
-        rethrowDatabaseError(error, "Produto não encontrado.");
+        throw error;
     }
 
     if (!data) {
@@ -39,12 +38,20 @@ async function findById(id: string) {
 async function create(product: ProductCreateInput) {
     const { data, error } = await supabase
         .from("products")
-        .insert(product)
+        .insert({
+            categoryId: product.categoryId,
+            name: product.name,
+            description: product.description ?? null,
+            price: product.price,
+            image: product.image ?? null,
+            available: product.available ?? true,
+            active: product.active ?? true,
+        })
         .select()
         .single();
 
     if (error) {
-        rethrowWriteError(error, "Categoria informada não encontrada.");
+        throw error;
     }
 
     if (!data) {
@@ -60,10 +67,10 @@ async function update(id: string, product: ProductUpdateInput) {
         .update(product)
         .eq("id", id)
         .select()
-        .single();
+        .maybeSingle();
 
     if (error) {
-        rethrowDatabaseError(error, "Produto não encontrado.", "Categoria informada não encontrada.");
+        throw error;
     }
 
     if (!data) {
@@ -78,15 +85,11 @@ async function remove(id: string) {
         .from("products")
         .delete()
         .eq("id", id)
-        .single();
+        .select()
+        .maybeSingle();
 
     if (error) {
-        rethrowDatabaseError(
-            error,
-            "Produto não encontrado.",
-            undefined,
-            "Produto não pode ser removido enquanto houver pedidos vinculados.",
-        );
+        throw error;
     }
 
     if (!data) {

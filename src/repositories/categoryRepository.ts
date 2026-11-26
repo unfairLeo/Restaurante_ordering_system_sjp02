@@ -4,7 +4,6 @@ import type {
     CategoryUpdateInput,
 } from "../model/category.js";
 import { NotFoundError } from "../error/notFoundError.js";
-import { rethrowDatabaseError } from "./repositoryErrors.js";
 
 async function findAll() {
     const { data, error } = await supabase
@@ -23,10 +22,10 @@ async function findById(id: string) {
         .from("categories")
         .select("*")
         .eq("id", id)
-        .single();
+        .maybeSingle();
 
     if (error) {
-        rethrowDatabaseError(error, "Categoria não encontrada.");
+        throw error;
     }
 
     if (!data) {
@@ -66,10 +65,10 @@ async function update(id: string, category: CategoryUpdateInput) {
         .update(category)
         .eq("id", id)
         .select()
-        .single();
+        .maybeSingle();
 
     if (error) {
-        rethrowDatabaseError(error, "Categoria não encontrada.");
+        throw error;
     }
 
     if (!data) {
@@ -84,15 +83,11 @@ async function remove(id: string) {
         .from("categories")
         .delete()
         .eq("id", id)
-        .single();
+        .select()
+        .maybeSingle();
 
     if (error) {
-        rethrowDatabaseError(
-            error,
-            "Categoria não encontrada.",
-            undefined,
-            "Categoria não pode ser removida enquanto houver produtos vinculados.",
-        );
+        throw error;
     }
 
     if (!data) {
