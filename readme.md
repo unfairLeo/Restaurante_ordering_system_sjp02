@@ -27,6 +27,8 @@ API REST para um sistema de **autoatendimento de restaurante**, desenvolvida com
 | `dotenv` | Carrega variáveis do arquivo `.env` |
 | `tsx` | Executa TypeScript em desenvolvimento e nos testes |
 | `node:test` | Testes automatizados HTTP, incluído no Node.js |
+| `swagger-ui-express` | Disponibiliza a interface interativa da API |
+| OpenAPI | Especificação dos endpoints consumida pelo Swagger UI |
 | Postman | Collection manual disponível na raiz do projeto |
 
 O Node.js 22+ é necessário porque a versão do Supabase SDK definida no lockfile exige essa versão mínima. O projeto foi compilado e testado localmente com Node.js 24.19.0.
@@ -111,8 +113,9 @@ src/
 ├── server.ts        # Inicialização do servidor
 └── tests/
     ├── categoryTest.ts # Testes HTTP de categorias
-    ├── productTest.ts   # Testes HTTP de produtos
-    └── orderTest.ts     # Testes HTTP de pedidos
+    ├── productTest.ts  # Testes HTTP de produtos
+    ├── orderTest.ts    # Testes HTTP de pedidos
+    └── swaggerTest.ts  # Verifica a interface e a especificação Swagger
 database/
 └── schema.sql       # Script de criação das tabelas
 restaurant-ordering-system-API.postman_collection.json
@@ -183,7 +186,7 @@ A API ficará disponível em `http://localhost:3000`. O servidor usa a porta `30
 
 ### Documentação Swagger
 
-Com a API em execução, acesse `http://localhost:3000/api-docs` para consultar e testar os endpoints documentados. A especificação OpenAPI fica em `src/openapi.ts`.
+Com a API em execução, acesse `http://localhost:3000/api-docs` para consultar e testar os endpoints de categorias, produtos e pedidos. O Swagger UI usa a especificação OpenAPI definida em `src/openapi.ts` para apresentar os parâmetros e os campos dos corpos das requisições. Para testar operações que acessam o banco, configure o Supabase e use IDs existentes.
 
 ### Scripts disponíveis
 
@@ -191,11 +194,11 @@ Com a API em execução, acesse `http://localhost:3000/api-docs` para consultar 
 |---|---|
 | `npm ci` | Instala as dependências travadas no lockfile |
 | `npm run dev` | Executa em desenvolvimento e reinicia ao salvar |
-| `npm test` | Executa os testes HTTP automatizados das três entidades |
+| `npm test` | Executa os testes HTTP das entidades e do Swagger |
 | `npm run build` | Compila os arquivos de `src/` para `dist/` |
 | `npm start` | Executa `dist/server.js`; rode `npm run build` antes |
 
-`npm test` não precisa de credenciais reais nem altera o banco: os testes simulam os repositórios de categorias, produtos e pedidos. Para validar persistência, configure o Supabase e execute a collection do Postman.
+`npm test` não precisa de credenciais reais nem altera o banco: os testes de categorias, produtos e pedidos simulam os repositórios; o teste do Swagger verifica que a interface e a especificação estão disponíveis.
 
 ## 7. Variáveis de ambiente
 
@@ -375,7 +378,7 @@ npm test
 npm run build
 ```
 
-Os testes HTTP em `src/tests/` usam os repositórios simulados para validar as rotas, payloads, validações e respostas de categorias, produtos e pedidos sem escrever no banco. Eles não comprovam a conexão real com o Supabase. A validação de persistência requer credenciais válidas, schema aplicado e execução manual da collection.
+Os testes HTTP em `src/tests/` validam as rotas, payloads, validações e respostas de categorias, produtos e pedidos usando repositórios simulados, sem escrever no banco. O teste de Swagger verifica a disponibilidade da interface e das rotas documentadas. Esses testes não comprovam a conexão real com o Supabase; para isso, configure as credenciais, aplique o schema e execute a collection do Postman.
 
 ## 12. Limitações conhecidas
 
