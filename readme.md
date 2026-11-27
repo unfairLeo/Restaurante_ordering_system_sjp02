@@ -12,7 +12,7 @@ API REST para um sistema de **autoatendimento de restaurante**, desenvolvida com
 
 ## 2. Identificação do estudante
 
-**Leonardo Ravache**
+**Leonardo Ravache e Felipe Rigonato**
 
 ## 3. Tecnologias e requisitos
 
@@ -115,9 +115,16 @@ src/
     ├── categoryTest.ts # Testes HTTP de categorias
     ├── productTest.ts  # Testes HTTP de produtos
     ├── orderTest.ts    # Testes HTTP de pedidos
+    ├── staticTest.ts   # Verifica a página e os arquivos estáticos
     └── swaggerTest.ts  # Verifica a interface e a especificação Swagger
+static/
+├── index.html          # Landing page com a animação 3D e o cardápio
+├── menu.css            # Estilos das seções após o hero
+└── menu.js             # Carregamento do cardápio e criação de pedidos
 database/
-└── schema.sql       # Script de criação das tabelas
+├── schema.sql                    # Script de criação das tabelas
+├── migrate-legacy-products.sql   # Ajusta nomes antigos das colunas de produtos
+└── seed.sql                      # Dados demonstrativos para o cardápio
 restaurant-ordering-system-API.postman_collection.json
                     # Collection para testes manuais
 ```
@@ -174,7 +181,11 @@ macOS/Linux:
 cp .env.example .env
 ```
 
-No SQL Editor do Supabase, execute [`database/schema.sql`](./database/schema.sql) uma vez em um banco novo. O script cria as três tabelas; ele não insere dados de exemplo.
+No SQL Editor do Supabase, prepare as tabelas conforme o estado do banco:
+
+1. **Banco novo:** execute [`database/schema.sql`](./database/schema.sql) uma vez para criar as tabelas.
+2. **Banco existente com `products.category_id` e `products.title`:** execute [`database/migrate-legacy-products.sql`](./database/migrate-legacy-products.sql) para renomear essas colunas para `"categoryId"` e `name`, sem apagar os registros existentes. Não execute `schema.sql` sobre tabelas já criadas.
+3. Execute [`database/seed.sql`](./database/seed.sql) para adicionar categorias e produtos demonstrativos. O seed pode ser executado novamente sem duplicar os registros; nomes e preços são fictícios e devem ser revisados antes de usar em produção.
 
 ### Executar em desenvolvimento
 
@@ -182,7 +193,11 @@ No SQL Editor do Supabase, execute [`database/schema.sql`](./database/schema.sql
 npm run dev
 ```
 
-A API ficará disponível em `http://localhost:3000`. O servidor usa a porta `3000`, definida em `src/server.ts`.
+A aplicação ficará disponível em `http://localhost:3000`. A página inicial serve a interface estática e a API continua disponível nos caminhos `/categories`, `/products` e `/orders`.
+
+### Site e pedidos
+
+A página em `static/` apresenta a animação 3D do hero, com um botão para pulá-la e ir direto ao cardápio. Os indicadores circulares das etapas foram removidos. O cardápio é carregado pela API; o seed associa fotos aos itens e exibe créditos de fonte/licença quando necessário. O cliente pode filtrar categorias, buscar refeições e enviar um pedido com nome e quantidade. Para o cardápio aparecer, configure o Supabase, crie ou migre as tabelas e carregue os dados demonstrativos com os passos acima.
 
 ### Documentação Swagger
 
@@ -195,10 +210,20 @@ Com a API em execução, acesse `http://localhost:3000/api-docs` para consultar 
 | `npm ci` | Instala as dependências travadas no lockfile |
 | `npm run dev` | Executa em desenvolvimento e reinicia ao salvar |
 | `npm test` | Executa os testes HTTP das entidades e do Swagger |
+| `npm run test:integration` | Testa as rotas de leitura conectadas a um projeto Supabase de teste |
 | `npm run build` | Compila os arquivos de `src/` para `dist/` |
 | `npm start` | Executa `dist/server.js`; rode `npm run build` antes |
 
 `npm test` não precisa de credenciais reais nem altera o banco: os testes de categorias, produtos e pedidos simulam os repositórios; o teste do Swagger verifica que a interface e a especificação estão disponíveis.
+
+Para executar o teste de integração, crie `.env.test` a partir de `.env.test.example`, preencha `SUPABASE_TEST_URL` e `SUPABASE_TEST_SECRET_KEY` com as credenciais de um projeto Supabase de teste e execute:
+
+```powershell
+Copy-Item .env.test.example .env.test
+npm run test:integration
+```
+
+O teste inicia a API em uma porta temporária e faz somente consultas `GET` às tabelas de categorias, produtos e pedidos. Ele verifica a conexão da API, as rotas e o schema; não insere, atualiza nem exclui dados. Use um projeto de teste e mantenha a chave secreta fora do Git.
 
 ## 7. Variáveis de ambiente
 
@@ -220,7 +245,7 @@ O código também aceita `SUPABASE_SERVICE_ROLE_KEY` como alternativa à chave s
 
 ## 8. Banco de dados
 
-O schema SQL está em [`database/schema.sql`](./database/schema.sql). Execute-o pelo SQL Editor do Supabase em um banco novo.
+Os scripts SQL ficam na pasta [`database/`](./database/). `schema.sql` cria as tabelas em um banco novo; `migrate-legacy-products.sql` ajusta os nomes antigos das colunas de uma tabela `products` já existente; e `seed.sql` insere dados demonstrativos. Execute-os no SQL Editor do Supabase, seguindo os passos da seção de configuração.
 
 - Os identificadores são **UUID**, gerados automaticamente pelo banco.
 - `products."categoryId"` é **chave estrangeira** para `categories.id`.
@@ -228,7 +253,7 @@ O schema SQL está em [`database/schema.sql`](./database/schema.sql). Execute-o 
 - Com `on delete restrict`, não é possível excluir uma categoria que ainda possua produtos, nem um produto que ainda possua pedidos.
 - O nome `"categoryId"` é sensível a maiúsculas/minúsculas no PostgreSQL e precisa permanecer entre aspas no schema.
 - O preço é armazenado como `numeric(10, 2)`; quantidades de pedidos devem ser inteiros maiores que zero.
-- Não há carga inicial (seed): crie primeiro uma categoria, depois um produto ligado a ela e, por fim, um pedido ligado ao produto.
+- `seed.sql` cria três categorias e seis produtos demonstrativos. Os preços são exemplos, não valores comerciais.
 
 ## 9. Documentação dos endpoints
 
@@ -378,11 +403,11 @@ npm test
 npm run build
 ```
 
-Os testes HTTP em `src/tests/` validam as rotas, payloads, validações e respostas de categorias, produtos e pedidos usando repositórios simulados, sem escrever no banco. O teste de Swagger verifica a disponibilidade da interface e das rotas documentadas. Esses testes não comprovam a conexão real com o Supabase; para isso, configure as credenciais, aplique o schema e execute a collection do Postman.
+Os testes HTTP em `src/tests/` validam as rotas, payloads, validações e respostas de categorias, produtos e pedidos usando repositórios simulados, sem escrever no banco. Os testes de Swagger e da camada estática verificam a disponibilidade de suas páginas e arquivos. `npm run test:integration` consulta as três tabelas no Supabase configurado em `.env.test`, sem alterar dados; para testar operações de escrita, use a collection do Postman em um projeto de teste.
 
 ## 12. Limitações conhecidas
 
 - A API não implementa autenticação, autorização nem middleware CORS. Não a exponha publicamente sem controles adequados.
 - A chave secreta do Supabase é carregada no servidor; proteja as rotas e mantenha essa chave fora do cliente.
 - Um pedido representa um único produto e uma quantidade; não há carrinho nem múltiplos itens por pedido.
-- Não há migrations, seed automático ou testes de integração contra uma instância real do Supabase.
+- Não há migrations nem seed automático; o teste de integração atual cobre somente consultas de leitura ao Supabase.

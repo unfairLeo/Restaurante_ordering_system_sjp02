@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sabor de Verdade — Marmitaria</title>
+<meta name="description" content="Confira o cardápio da Sabor de Verdade e peça sua refeição.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kaushan+Script&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./menu.css">
+<style>
+  /* ===== Tokens (design escuro e quente nos dois temas) ===== */
+  :root{
+    --bg:#0b0807; --bg2:#1a110c; --ink:#fff7f0; --muted:#cdbfb4;
+    --orange:#ff7a1a; --orange-2:#ff9a3d; --line:rgba(255,140,60,.3);
+    color-scheme:dark; box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bg:#0b0807; --ink:#fff7f0; } }
+  :root[data-theme="dark"]{ --bg:#0b0807; --ink:#fff7f0; }
+  *,*::before,*::after{ box-sizing:inherit; margin:0; padding:0; }
+  html{ scroll-padding-top:env(safe-area-inset-top,0px); }
+  body{ background:var(--bg); color:var(--ink); font-family:"Poppins",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; -webkit-font-smoothing:antialiased; overflow-x:hidden; }
+
+  /* ===== Navbar ===== */
+  .nav{ position:fixed; top:0; left:0; right:0; z-index:20; display:flex; align-items:center; justify-content:space-between;
+        padding:calc(env(safe-area-inset-top,0px) + 20px) clamp(20px,5vw,64px) 20px; }
+  .brand{ display:flex; align-items:center; gap:10px; color:var(--ink); text-decoration:none; }
+  .brand svg{ width:40px; height:40px; }
+  .brand span{ font-family:"Kaushan Script",cursive; font-size:1.35rem; line-height:1; }
+  .btn{ display:inline-flex; align-items:center; gap:10px; border-radius:999px; font:600 .95rem/1 inherit; padding:14px 24px;
+        text-decoration:none; cursor:pointer; border:1.5px solid transparent; transition:transform .2s, box-shadow .2s, background .2s; }
+  .btn svg{ width:18px; height:18px; }
+  .btn-primary{ background:linear-gradient(180deg,#ff8a2b,#f2620a); color:#fff; box-shadow:0 10px 30px -10px rgba(255,110,20,.8); }
+  .btn-primary:hover{ transform:translateY(-1px); box-shadow:0 14px 34px -10px rgba(255,110,20,1); }
+  .btn-outline{ border-color:var(--orange); color:var(--ink); background:rgba(20,10,5,.4); padding:11px 20px; }
+  .btn-outline:hover{ background:rgba(255,122,26,.12); }
+  .btn:focus-visible{ outline:2px solid var(--orange-2); outline-offset:3px; }
+
+  /* ===== Trilho + palco fixo ===== */
+  .track{ position:relative; height:600vh; }
+  .stage{ position:sticky; top:0; height:100vh; height:100svh; overflow:hidden;
+    background: radial-gradient(55% 60% at 50% 55%, rgba(120,55,20,.35), transparent 70%),
+                radial-gradient(80% 80% at 50% 50%, var(--bg2), var(--bg)); }
+  #scene{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+  .vignette{ position:absolute; inset:0; pointer-events:none; background:radial-gradient(75% 75% at 50% 50%, transparent 55%, rgba(0,0,0,.65)); }
+
+  /* ===== Texto do estado final ===== */
+  .final{ position:absolute; z-index:4; right:clamp(24px,8vw,140px); top:50%; width:min(440px,40vw);
+          opacity:0; transform:translate(30px,-50%); pointer-events:none; }
+  .final.live{ pointer-events:auto; }
+  .brush{ position:absolute; left:-170px; top:-86px; width:260px; height:140px; z-index:-1; opacity:.95; }
+  .eyebrow{ color:var(--orange); font-weight:700; font-size:.85rem; letter-spacing:.06em; text-transform:uppercase; margin-bottom:12px; }
+  .final h2{ font-size:clamp(2.2rem,4.2vw,3.7rem); line-height:1.05; font-weight:800; letter-spacing:-.01em; }
+  .swoosh{ display:block; width:min(300px,80%); height:22px; margin:14px 0 30px; }
+
+  /* ===== Etapas ===== */
+  .steps{ position:absolute; left:clamp(20px,5vw,64px); bottom:calc(env(safe-area-inset-bottom,0px) + 32px); display:flex; align-items:center; gap:18px; z-index:5; }
+  .label b{ display:block; font-size:.95rem; }
+  .label small{ color:var(--muted); font-size:.8rem; }
+  .bar{ position:absolute; left:0; right:0; bottom:0; height:2px; background:rgba(255,255,255,.06); z-index:5; }
+  .bar i{ display:block; height:100%; background:linear-gradient(90deg,#f2620a,#ffb36b); transform-origin:left; transform:scaleX(0); }
+  .skip-animation{ position:absolute; right:clamp(20px,5vw,64px); bottom:calc(env(safe-area-inset-bottom,0px) + 76px); z-index:6;
+                   font-size:.85rem; }
+  .hint{ position:absolute; right:clamp(20px,5vw,64px); bottom:calc(env(safe-area-inset-bottom,0px) + 34px); display:flex; align-items:center; gap:10px;
+         color:var(--muted); font-size:.85rem; z-index:5; }
+  .mouse{ width:20px; height:32px; border:2px solid var(--orange); border-radius:12px; position:relative; }
+  .mouse::after{ content:""; position:absolute; left:50%; top:6px; width:3px; height:7px; margin-left:-1.5px; border-radius:2px; background:var(--orange); animation:wheel 1.6s infinite; }
+  @keyframes wheel{ 0%{opacity:1;transform:translateY(0)} 100%{opacity:0;transform:translateY(9px)} }
+
+  .after{ min-height:60vh; display:grid; place-items:center; padding:80px 24px; background:var(--bg); color:var(--muted); text-align:center; }
+  .after h2{ color:var(--ink); font-size:clamp(1.6rem,3vw,2.4rem); margin-bottom:10px; }
+  .loading,.fallback{ position:absolute; inset:0; display:grid; place-items:center; color:var(--muted); z-index:3; text-align:center; padding:20px; }
+  .fallback{ display:none; }
+
+  @media (max-width:860px){
+    .final{ left:24px; right:24px; width:auto; top:auto; bottom:calc(env(safe-area-inset-bottom,0px) + 96px); transform:translateY(20px); }
+    .brush{ left:-30px; top:-50px; width:180px; height:100px; }
+    .swoosh{ margin:10px 0 18px; }
+    .label small{ display:none; }
+    .hint{ display:none; }
+    .skip-animation{ right:18px; bottom:calc(env(safe-area-inset-bottom,0px) + 18px); }
+  }
+  @media (prefers-reduced-motion: reduce){ .mouse::after{ animation:none; } }
+</style>
+</head>
+<body>
+
+<header class="nav" id="top">
+  <a class="brand" href="#top" aria-label="Sabor de Verdade, início">
+    <!-- Chapéu de chef com garfo (mesmo desenho usado na tampa) -->
+    <svg viewBox="0 0 64 64" aria-hidden="true" fill="none" stroke="#ff7a1a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path id="hat" d="M18 42c-6.5 0-11-5-11-11s4.7-11 11-11c1 0 2 .1 3 .4C23 13.5 27 9 32 9s9 4.5 11 11.4c1-.3 2-.4 3-.4 6.3 0 11 5 11 11s-4.5 11-11 11v13H18z"/>
+      <path d="M27 31v8m5-8v8m5-8v8M27 39c0 3 2 5 5 5s5-2 5-5M32 44v11"/>
+    </svg>
+    <span>Sabor de verdade!</span>
+  </a>
+  <a class="btn btn-outline" href="#cardapio">Peça agora</a>
+</header>
+
+<section class="track" id="track">
+  <div class="stage">
+    <canvas id="scene" aria-label="Marmita em 3D que gira, abre a tampa e revela a refeição conforme o scroll"></canvas>
+    <div class="vignette"></div>
+    <div class="loading" id="loading">Preparando a marmita…</div>
+    <div class="fallback" id="fallback">Seu navegador não conseguiu iniciar o WebGL, então a animação 3D não pode ser exibida.</div>
+
+    <div class="final" id="final">
+      <svg class="brush" viewBox="0 0 260 140" aria-hidden="true"><path fill="#ff7a1a" d="M40 118c18-30 52-62 96-86 20-11 52-24 86-30-14 10-30 20-44 32 22-8 46-13 66-14-30 18-62 40-88 64 12-4 26-6 36-6-30 14-60 32-86 52-20 4-44 0-66-12z"/></svg>
+      <p class="eyebrow">Refeições de qualidade</p>
+      <h2>Sabor e<br>praticidade<br>no seu dia!</h2>
+      <svg class="swoosh" viewBox="0 0 300 22" aria-hidden="true"><path d="M4 16C80 4 190 2 296 8" stroke="#ff7a1a" stroke-width="7" stroke-linecap="round" fill="none"/></svg>
+      <a class="btn btn-primary" href="#cardapio">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h2l2.4 11h11l2-8H6.3"/><circle cx="9" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></svg>
+        Peça agora →
+      </a>
+    </div>
+
+    <div class="steps">
+      <div class="label" aria-live="polite"><b id="lblT">Estado inicial</b><small id="lblD">Embalagem fechada em destaque</small></div>
+    </div>
+    <a class="btn btn-outline skip-animation" href="#cardapio">Pular animação <span aria-hidden="true">↓</span></a>
+    <div class="hint" id="hint"><span class="mouse"></span>Role para abrir a marmita</div>
+    <div class="bar"><i id="barFill"></i></div>
+  </div>
+</section>
+
+<main>
+  <section class="after menu-section" id="cardapio" aria-labelledby="menuTitle">
+    <div class="section-shell">
+      <header class="section-heading">
+        <p class="eyebrow">Feito com carinho, servido com sabor</p>
+        <h2 id="menuTitle">Nosso cardápio</h2>
+        <p>Escolha sua refeição e faça seu pedido direto por aqui.</p>
+      </header>
+
+      <div class="menu-toolbar">
+        <nav class="category-filters" id="categoryFilters" aria-label="Filtrar por categoria"></nav>
+        <label class="search-field">
+          <span class="sr-only">Buscar no cardápio</span>
+          <input id="productSearch" type="search" placeholder="Buscar refeição..." autocomplete="off">
+        </label>
+      </div>
+
+      <p class="menu-status" id="menuStatus" role="status" aria-live="polite">Carregando cardápio...</p>
+      <div class="products-grid" id="productsGrid"></div>
+    </div>
+  </section>
+
+  <section class="how-it-works" id="como-funciona" aria-labelledby="howTitle">
+    <div class="section-shell">
+      <header class="section-heading">
+        <p class="eyebrow">Simples assim</p>
+        <h2 id="howTitle">Seu pedido em poucos passos</h2>
+      </header>
+      <div class="steps-grid">
+        <article class="feature-card">
+          <span class="feature-number">01</span>
+          <h3>Escolha sua refeição</h3>
+          <p>Explore as categorias e encontre seu prato favorito.</p>
+        </article>
+        <article class="feature-card">
+          <span class="feature-number">02</span>
+          <h3>Informe seus dados</h3>
+          <p>Preencha seu nome e a quantidade desejada.</p>
+        </article>
+        <article class="feature-card">
+          <span class="feature-number">03</span>
+          <h3>Pedido registrado</h3>
+          <p>Seu pedido é enviado para a equipe da Sabor de Verdade.</p>
+        </article>
+      </div>
+      <a class="btn btn-primary section-cta" href="#cardapio">Explorar cardápio</a>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <a class="brand" href="#top" aria-label="Voltar ao início">
+    <span>Sabor de verdade!</span>
+  </a>
+  <p>Comida de verdade para deixar seu dia mais gostoso.</p>
+</footer>
+
+<dialog class="order-dialog" id="orderDialog" aria-labelledby="orderTitle">
+  <button class="dialog-close" id="closeOrderDialog" type="button" aria-label="Fechar">×</button>
+  <p class="eyebrow">Só falta confirmar</p>
+  <h2 id="orderTitle">Fazer pedido</h2>
+  <p class="selected-product" id="selectedProduct"></p>
+  <form id="orderForm">
+    <label for="customerName">Seu nome</label>
+    <input id="customerName" name="customer_name" type="text" maxlength="100" required autocomplete="name">
+    <label for="quantity">Quantidade</label>
+    <input id="quantity" name="quantity" type="number" min="1" max="99" value="1" required>
+    <button class="btn btn-primary submit-order" id="submitOrder" type="submit">Confirmar pedido</button>
+  </form>
+  <p class="order-feedback" id="orderFeedback" role="status" aria-live="polite" hidden></p>
+</dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="./menu.js" defer></script>
+<script>
+(async () => {
+  // ================= Helpers =================
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const smooth = t => t * t * (3 - 2 * t);
+  let prog = 0, target = 0;                                   // progresso 0..5 (6 estados)
+  const S = (a, b) => smooth(clamp((prog - a) / (b - a), 0, 1));
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const rand = (a, b) => a + Math.random() * (b - a);
+
+  // ================= Keyframes: um objeto por imagem (1 → 6) =================
+  // cam/look = posição e alvo da câmera | rotY = giro da marmita | lid = ângulo da tampa | gx = deslocamento lateral
+  const K = [
+    { cam: [0, 3.6, 10.8], look: [0, .35, 0],  rotY: -.45, lid: 0,     gx: 0 },     // 1 Estado inicial
+    { cam: [.5, 2.9, 7.6], look: [0, .45, 0],  rotY: .22,  lid: 0,     gx: 0 },     // 2 Rotação e aproximação
+    { cam: [0, 4.3, 7.4],  look: [0, .6, 0],   rotY: .06,  lid: -1.15, gx: 0 },     // 3 Abertura da tampa
+    { cam: [.25, 3.0, 3.5],look: [.1, .4, .15],rotY: -.12, lid: -1.95, gx: 0 },     // 4 Destaque dos detalhes
+    { cam: [0, 7.4, 6.4],  look: [0, .3, 0],   rotY: 0,    lid: -1.95, gx: 0 },     // 5 Visão completa
+    { cam: [.2, 4.4, 10.6], look: [1.0, 1.15, 0], rotY: .38, lid: -1.62, gx: -1.15 },  // 6 Estado final
+  ];
+  const key = name => {                                        // interpola entre o estado atual e o próximo
+    const i = Math.min(Math.floor(prog), 4), f = smooth(clamp(prog - i, 0, 1));
+    const a = K[i][name], b = K[i + 1][name];
+    return Array.isArray(a) ? a.map((v, j) => lerp(v, b[j], f)) : lerp(a, b, f);
+  };
+
+  // ================= UI das etapas =================
+  const STEPS = [
+    ['Estado inicial', 'Embalagem fechada em destaque'],
+    ['Rotação e aproximação', 'A marmita gira e se aproxima'],
+    ['Abertura da tampa', 'A tampa abre e o vapor sobe'],
+    ['Destaque dos detalhes', 'A câmera chega perto da comida'],
+    ['Visão completa da refeição', 'A câmera recua e revela tudo'],
+    ['Estado final', 'Marmita aberta com o pedido ao lado'],
+  ];
+  const track = document.getElementById('track');
+  const $ = id => document.getElementById(id);
+  const lblT = $('lblT'), lblD = $('lblD'), barFill = $('barFill'), hint = $('hint'), finalEl = $('final');
+  let lastIdx = -1;
+  function readScroll() {
+    const max = track.offsetHeight - innerHeight;
+    target = clamp(-track.getBoundingClientRect().top / max, 0, 1) * 5;
+  }
+  addEventListener('scroll', readScroll, { passive: true });
+  addEventListener('resize', readScroll);
+  readScroll(); prog = target;
+
+  // ================= Renderer =================
+  const canvas = $('scene');
+  let renderer;
+  try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }); }
+  catch (e) { $('loading').style.display = 'none'; $('fallback').style.display = 'grid'; return; }
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = .95;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  const ANISO = renderer.capabilities.getMaxAnisotropy();
+
+  // Fontes precisam estar carregadas antes de desenhar o logo no canvas
+  try { await Promise.all([document.fonts.load('120px "Kaushan Script"'), document.fonts.load('700 40px Poppins')]); } catch (e) {}
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(30, 1, .1, 120);
+
+  // Ambiente para reflexos no plástico preto (softboxes quentes)
+  (() => {
+    const env = new THREE.Scene();
+    const box = (c, i, p, s) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(...s), new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(i), side: THREE.DoubleSide })); m.position.set(...p); m.lookAt(0, 0, 0); env.add(m); };
+    box(0xffb070, 1.6, [-4, 6, 4], [3, 1.2]); box(0xff7a1a, 1.2, [5, 3, -5], [3, 1.2]); box(0xffffff, .6, [0, 5, 6], [4, .8]);
+    const pm = new THREE.PMREMGenerator(renderer);
+    scene.environment = pm.fromScene(env, .04).texture;
+  })();
+
+  // Luzes quentes
+  scene.add(new THREE.HemisphereLight(0xffe6cc, 0x1a0d06, .2));
+  scene.add(new THREE.AmbientLight(0xffd2b0, .08));
+  const spot = new THREE.SpotLight(0xffb46b, 2.4, 0, .62, .65, 1);
+  spot.position.set(-3, 8.5, 4.5); spot.castShadow = true; spot.shadow.mapSize.set(2048, 2048); spot.shadow.bias = -.0004; spot.shadow.normalBias = .015; spot.shadow.radius = 4;
+  scene.add(spot); scene.add(spot.target);
+  const rim = new THREE.DirectionalLight(0xff7a1a, 1.1); rim.position.set(4, 3, -5); scene.add(rim);
+  const fillL = new THREE.PointLight(0xffe0c0, .45, 20); fillL.position.set(0, 4, 7); scene.add(fillL);
+
+  // ================= Texturas em canvas =================
+  const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+  const tex = (c, rep) => { const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = ANISO; if (rep) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep, rep); } return t; };
+  const HAT = document.getElementById('hat').getAttribute('d');
+  const FORK = 'M27 31v8m5-8v8m5-8v8M27 39c0 3 2 5 5 5s5-2 5-5M32 44v11';
+
+  function logoTexture() {                                      // chapéu + "Sabor de verdade!" + traço laranja
+    const c = mk(1024, 680), g = c.getContext('2d');
+    g.save(); g.translate(512 - 96, 20); g.scale(3, 3);
+    g.strokeStyle = '#ff7a1a'; g.lineWidth = 4; g.lineCap = g.lineJoin = 'round';
+    g.stroke(new Path2D(HAT)); g.stroke(new Path2D(FORK)); g.restore();
+    g.save(); g.translate(512, 360); g.rotate(-.12);
+    g.fillStyle = '#f6efe8'; g.textAlign = 'center'; g.font = '150px "Kaushan Script", cursive';
+    g.fillText('Sabor', 0, 20); g.font = '110px "Kaushan Script", cursive'; g.fillText('de verdade!', 0, 140);
+    g.strokeStyle = '#ff7a1a'; g.lineWidth = 16; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(-260, 200); g.quadraticCurveTo(0, 170, 270, 188); g.stroke(); g.restore();
+    return tex(c);
+  }
+  function plaidTexture() {                                     // pano xadrez marrom/laranja
+    const c = mk(512, 512), g = c.getContext('2d'); g.fillStyle = '#1f110b'; g.fillRect(0, 0, 512, 512);
+    const band = (horiz, pos, w, col) => { g.fillStyle = col; horiz ? g.fillRect(0, pos, 512, w) : g.fillRect(pos, 0, w, 512); };
+    for (const h of [false, true]) for (let p = 0; p < 512; p += 128) {
+      band(h, p + 10, 46, 'rgba(95,42,16,.55)'); band(h, p + 70, 6, 'rgba(150,70,25,.55)'); band(h, p + 90, 18, 'rgba(10,5,3,.55)'); band(h, p + 118, 3, 'rgba(170,85,35,.4)');
+    }
+    for (let i = 0; i < 4000; i++) { g.fillStyle = `rgba(0,0,0,${rand(0, .12)})`; g.fillRect(rand(0, 512), rand(0, 512), 2, 1); }
+    return tex(c, 2);
+  }
+  function woodTexture() {
+    const c = mk(1024, 1024), g = c.getContext('2d'); g.fillStyle = '#1b120d'; g.fillRect(0, 0, 1024, 1024);
+    for (let i = 0; i < 260; i++) { g.strokeStyle = `rgba(${Math.random() < .5 ? '60,38,24' : '8,5,3'},${rand(.15, .5)})`; g.lineWidth = rand(1, 4);
+      const y = rand(0, 1024); g.beginPath(); g.moveTo(0, y); for (let x = 0; x <= 1024; x += 64) g.lineTo(x, y + Math.sin(x * .01 + i) * 6); g.stroke(); }
+    return tex(c, 3);
+  }
+  function radialAlpha() {                                     // mesa some nas bordas e funde com o fundo CSS
+    const c = mk(256, 256), g = c.getContext('2d'); const gr = g.createRadialGradient(128, 128, 10, 128, 128, 128);
+    gr.addColorStop(0, '#fff'); gr.addColorStop(.55, '#888'); gr.addColorStop(1, '#000'); g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+    return new THREE.CanvasTexture(c);
+  }
+  function smokeTexture() {
+    const c = mk(128, 128), g = c.getContext('2d');
+    for (let i = 0; i < 9; i++) { const x = rand(40, 88), y = rand(40, 88), r = rand(18, 40); const gr = g.createRadialGradient(x, y, 0, x, y, r);
+      gr.addColorStop(0, 'rgba(255,255,255,.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); }
+    return new THREE.CanvasTexture(c);
+  }
+  function tomatoSliceTexture() {
+    const c = mk(256, 256), g = c.getContext('2d');
+    g.fillStyle = '#c8200f'; g.beginPath(); g.arc(128, 128, 126, 0, 7); g.fill();
+    g.fillStyle = '#ef5a3c'; g.beginPath(); g.arc(128, 128, 104, 0, 7); g.fill();
+    g.fillStyle = '#ff8a6a'; g.beginPath(); g.arc(128, 128, 30, 0, 7); g.fill();
+    for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + .4; g.fillStyle = 'rgba(255,190,120,.85)'; g.beginPath(); g.ellipse(128 + Math.cos(a) * 62, 128 + Math.sin(a) * 62, 26, 16, a, 0, 7); g.fill();
+      for (let s = 0; s < 4; s++) { g.fillStyle = '#f7d27a'; g.beginPath(); g.ellipse(128 + Math.cos(a) * (50 + s * 7), 128 + Math.sin(a) * (50 + s * 7) + rand(-6, 6), 4, 2.5, a, 0, 7); g.fill(); } }
+    return tex(c);
+  }
+
+  // ================= Geometrias de retângulo arredondado =================
+  function rrShape(w, h, r, PathType = THREE.Shape) {
+    const s = new PathType(), x = -w / 2, y = -h / 2;
+    s.moveTo(x + r, y); s.lineTo(x + w - r, y); s.absarc(x + w - r, y + r, r, -Math.PI / 2, 0);
+    s.lineTo(x + w, y + h - r); s.absarc(x + w - r, y + h - r, r, 0, Math.PI / 2);
+    s.lineTo(x + r, y + h); s.absarc(x + r, y + h - r, r, Math.PI / 2, Math.PI);
+    s.lineTo(x, y + r); s.absarc(x + r, y + r, r, Math.PI, Math.PI * 1.5); return s;
+  }
+  // Extruda para cima (eixo Y) e aplica conicidade: base menor que o topo, como uma marmita real
+  function extrudeUp(shape, depth, opts = {}, taperFrom = 1, taperH = depth) {
+    const geo = new THREE.ExtrudeGeometry(shape, { depth, curveSegments: 18, bevelEnabled: false, ...opts });
+    geo.rotateX(-Math.PI / 2);
+    if (taperFrom !== 1) { const p = geo.attributes.position;
+      for (let i = 0; i < p.count; i++) { const f = lerp(taperFrom, 1, clamp(p.getY(i) / taperH, 0, 1)); p.setX(i, p.getX(i) * f); p.setZ(i, p.getZ(i) * f); }
+      geo.computeVertexNormals(); }
+    return geo;
+  }
+  const shadowy = m => { m.castShadow = true; m.receiveShadow = true; return m; };
+
+  // ================= Cenário: mesa + pano + props =================
+  const set = new THREE.Group(); scene.add(set);              // tudo que se desloca junto no estado final
+  const table = new THREE.Mesh(new THREE.PlaneGeometry(34, 34), new THREE.MeshStandardMaterial({ map: woodTexture(), alphaMap: radialAlpha(), transparent: true, roughness: .8 }));
+  table.rotation.x = -Math.PI / 2; table.receiveShadow = true; scene.add(table);
+
+  const napGeo = new THREE.PlaneGeometry(4.9, 3.9, 60, 48); napGeo.rotateX(-Math.PI / 2);
+  { const p = napGeo.attributes.position;                     // dobras do pano fora da área da marmita
+    for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), d = Math.max(Math.abs(x) / 2.45, Math.abs(z) / 1.95), w = clamp((d - .58) / .42, 0, 1);
+      p.setY(i, .012 + w * (.06 * Math.sin(x * 4.1 + z * 1.3) + .05 * Math.sin(z * 5.2 - x * .7) + .045)); }
+    napGeo.computeVertexNormals(); }
+  const napkin = new THREE.Mesh(napGeo, new THREE.MeshStandardMaterial({ map: plaidTexture(), roughness: .95 }));
+  napkin.rotation.y = .22; napkin.receiveShadow = true; set.add(napkin);
+
+  const tomatoMat = new THREE.MeshPhysicalMaterial({ color: 0xa50d06, roughness: .22, clearcoat: 1, clearcoatRoughness: .1 });
+  const leafMat = new THREE.MeshStandardMaterial({ color: 0x163f0c, roughness: .6, side: THREE.DoubleSide });
+  function tomato(r) {
+    const g = new THREE.Group();
+    const b = shadowy(new THREE.Mesh(new THREE.SphereGeometry(r, 32, 24), tomatoMat)); b.scale.y = .86; g.add(b);
+    for (let k = 0; k < 5; k++) { const l = new THREE.Mesh(new THREE.BoxGeometry(r * .7, .012, r * .16), leafMat); const a = k / 5 * Math.PI * 2;
+      l.position.set(Math.cos(a) * r * .3, r * .86, Math.sin(a) * r * .3); l.rotation.y = -a; l.rotation.z = .25; g.add(l); }
+    const st = new THREE.Mesh(new THREE.CylinderGeometry(.015, .02, r * .35, 6), leafMat); st.position.y = r * .95; g.add(st);
+    g.position.y = r * .86; return g;
+  }
+  [[-2.65, .26, .45], [-2.25, .22, .95], [-2.95, .24, -.2], [-2.05, .2, -.45], [2.45, .24, 1.15], [2.8, .2, .55]].forEach(([x, r, z]) => {
+    const t = tomato(r); t.position.x = x; t.position.z = z; set.add(t); });
+
+  // Ervas (salsinha) — folhas instanciadas
+  const herbGeo = new THREE.SphereGeometry(.11, 8, 6);
+  const herbs = new THREE.InstancedMesh(herbGeo, new THREE.MeshStandardMaterial({ roughness: .7 }), 140);
+  { const m = new THREE.Object3D(), col = new THREE.Color();
+    for (let i = 0; i < 140; i++) { const c = i < 85 ? [-2.35, -1.35] : [2.55, -1.15];
+      m.position.set(c[0] + rand(-.55, .55), rand(.08, .55), c[1] + rand(-.4, .4)); m.scale.set(1, .25, .7); m.rotation.set(rand(0, 3), rand(0, 3), rand(0, 3)); m.updateMatrix();
+      herbs.setMatrixAt(i, m.matrix); herbs.setColorAt(i, col.setHSL(rand(.27, .33), rand(.55, .75), rand(.05, .11))); } }
+  herbs.castShadow = true; set.add(herbs);
+
+  // ================= Marmita =================
+  const W = 3.0, D = 2.1, H = .85, R = .38, T = .07;
+  const box = new THREE.Group(); box.position.y = .03; set.add(box);
+  const blackMat = new THREE.MeshPhysicalMaterial({ color: 0x030304, roughness: .38, metalness: .05, clearcoat: 1, clearcoatRoughness: .1, envMapIntensity: .55, side: THREE.DoubleSide });
+
+  const wallShape = rrShape(W, D, R); wallShape.holes.push(rrShape(W - 2 * T, D - 2 * T, R - T, THREE.Path));
+  box.add(shadowy(new THREE.Mesh(extrudeUp(wallShape, H, {}, .9), blackMat)));
+  const floor = shadowy(new THREE.Mesh(extrudeUp(rrShape(W * .9, D * .9, R * .9), .06), blackMat)); box.add(floor);
+  const rimShape = rrShape(W + .16, D + .16, R + .08); rimShape.holes.push(rrShape(W - 2 * T, D - 2 * T, R - T, THREE.Path));
+  const rimMesh = shadowy(new THREE.Mesh(extrudeUp(rimShape, .04, { bevelEnabled: true, bevelThickness: .012, bevelSize: .012, bevelSegments: 2 }), blackMat));
+  rimMesh.position.y = H - .03; box.add(rimMesh);
+
+  const LOGO = logoTexture();
+  const logoMat = new THREE.MeshBasicMaterial({ map: LOGO, transparent: true, depthWrite: false, toneMapped: false });
+  const frontLogo = new THREE.Mesh(new THREE.PlaneGeometry(1.15, .76), logoMat);   // logo na lateral (aparece no estado 6)
+  frontLogo.position.set(0, .43, D / 2 * .95 + .006); frontLogo.rotation.x = .123; box.add(frontLogo);
+
+  // Tampa com dobradiça na borda de trás
+  const lidPivot = new THREE.Group(); lidPivot.position.set(0, H + .02, -(D / 2 + .09)); box.add(lidPivot);
+  const lid = new THREE.Group(); lid.position.z = D / 2 + .09; lidPivot.add(lid);
+  lid.add(shadowy(new THREE.Mesh(extrudeUp(rrShape(W + .2, D + .2, R + .1), .05, { bevelEnabled: true, bevelThickness: .02, bevelSize: .02, bevelSegments: 2 }), blackMat)));
+  const raised = shadowy(new THREE.Mesh(extrudeUp(rrShape(W - .42, D - .42, R - .12), .07, { bevelEnabled: true, bevelThickness: .045, bevelSize: .06, bevelSegments: 4 }), blackMat));
+  raised.position.y = .05; lid.add(raised);
+  const lidLogo = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 1.33), logoMat); lidLogo.rotation.x = -Math.PI / 2; lidLogo.position.y = .172; lid.add(lidLogo);
+
+  // ================= Comida =================
+  // Tudo procedural, com semente fixa: a montagem é "natural", mas idêntica a cada carregamento
+  const food = new THREE.Group(); box.add(food);
+  const dummy = new THREE.Object3D(), col = new THREE.Color();
+  const rng = (s => () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; })(20261013);
+  const rr = (a, b) => a + rng() * (b - a);
+  const FLOOR = .065;
+
+  // --- Ruído (value noise + fBm): base de toda irregularidade orgânica
+  const hash = (x, y) => { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); };
+  function vnoise(x, y) { const xi = Math.floor(x), yi = Math.floor(y), u = smooth(x - xi), v = smooth(y - yi);
+    return lerp(lerp(hash(xi, yi), hash(xi + 1, yi), u), lerp(hash(xi, yi + 1), hash(xi + 1, yi + 1), u), v); }
+  const fbm = (x, y) => vnoise(x, y) * .5 + vnoise(x * 2.1 + 5, y * 2.1) * .3 + vnoise(x * 4.3, y * 4.3 + 9) * .2;
+  const sstep = (a, b, x) => smooth(clamp((x - a) / (b - a), 0, 1));
+
+  // Distância até a parede interna (positivo = dentro), já considerando a conicidade da embalagem
+  function wallDist(x, z, y = .35) {
+    const f = lerp(.9, 1, y / H), hx = (W / 2 - T) * f, hz = (D / 2 - T) * f, r = (R - T) * f;
+    const qx = Math.abs(x) - hx + r, qz = Math.abs(z) - hz + r;
+    return -(Math.hypot(Math.max(qx, 0), Math.max(qz, 0)) + Math.min(Math.max(qx, qz), 0) - r);
+  }
+
+  // Malha de relevo (heightfield) com "oclusão ambiente" pintada nos vértices
+  function heightfield(x0, x1, z0, z1, n, hFn, colFn, mat) {
+    const g = new THREE.PlaneGeometry(x1 - x0, z1 - z0, n, Math.round(n * (z1 - z0) / (x1 - x0)));
+    g.rotateX(-Math.PI / 2); g.translate((x0 + x1) / 2, 0, (z0 + z1) / 2);
+    const p = g.attributes.position, c = new Float32Array(p.count * 3);
+    for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), y = hFn(x, z); p.setY(i, y); colFn(x, z, y); c.set([col.r, col.g, col.b], i * 3); }
+    g.setAttribute('color', new THREE.BufferAttribute(c, 3)); g.computeVertexNormals();
+    const m = new THREE.Mesh(g, mat); m.receiveShadow = true; m.castShadow = true; return m;
+  }
+
+  // --- Texturas dos alimentos
+  function riceSpeckle() {
+    const c = mk(256, 256), g = c.getContext('2d'); g.fillStyle = '#bdb6a6'; g.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 900; i++) { g.save(); g.translate(rr(0, 256), rr(0, 256)); g.rotate(rr(0, 6.3));
+      g.fillStyle = `rgba(${rr(235, 255) | 0},${rr(230, 248) | 0},${rr(215, 235) | 0},${rr(.6, 1)})`; g.beginPath(); g.ellipse(0, 0, rr(5, 8), rr(1.8, 2.8), 0, 0, 7); g.fill(); g.restore(); }
+    return tex(c, 7);
+  }
+  function chickenSkin() {                                    // casca grelhada: dourado, caramelizado, marcas da grelha
+    const c = mk(256, 256), g = c.getContext('2d');
+    const gr = g.createLinearGradient(0, 0, 256, 256); gr.addColorStop(0, '#b06a2a'); gr.addColorStop(.5, '#d39a52'); gr.addColorStop(1, '#a35d20');
+    g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 140; i++) { g.fillStyle = `rgba(${rr(120, 230) | 0},${rr(60, 140) | 0},${rr(20, 60) | 0},${rr(.08, .3)})`; g.beginPath(); g.arc(rr(0, 256), rr(0, 256), rr(3, 18), 0, 7); g.fill(); }
+    g.save(); g.translate(128, 128); g.rotate(-.35); g.filter = 'blur(5px)';
+    for (const k of [-90, -5, 82]) { g.fillStyle = `rgba(55,22,6,${rr(.55, .75)})`; g.fillRect(k + rr(-6, 6), -220, rr(14, 20), 440); }
+    g.restore(); g.filter = 'none';
+    for (let i = 0; i < 260; i++) { g.fillStyle = `rgba(40,15,4,${rr(.2, .6)})`; g.fillRect(rr(0, 256), rr(0, 256), rr(1, 3), rr(1, 3)); }
+    return tex(c, 1);
+  }
+  function chickenMeat() {                                    // corte interno: fibras claras e suculentas
+    const c = mk(256, 256), g = c.getContext('2d'); g.fillStyle = '#ead1b2'; g.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 40; i++) { g.fillStyle = `rgba(${rr(230, 250) | 0},${rr(190, 215) | 0},${rr(165, 185) | 0},.35)`; g.beginPath(); g.arc(rr(0, 256), rr(0, 256), rr(10, 30), 0, 7); g.fill(); }
+    for (let i = 0; i < 420; i++) { const y = rr(0, 256), x = rr(-40, 256), l = rr(30, 110);
+      g.strokeStyle = Math.random() < .5 ? `rgba(196,160,122,${rr(.2, .45)})` : `rgba(250,236,220,${rr(.25, .5)})`; g.lineWidth = rr(.6, 1.6);
+      g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + l / 2, y + rr(-5, 5), x + l, y + rr(-3, 3)); g.stroke(); }
+    return tex(c, 1);
+  }
+
+  // ================= 1. Arroz =================
+  const riceEdge = z => -.2 + .07 * Math.sin(z * 3.1 + 1.2) + .1 * (fbm(z * 2.5, 3.7) - .5);   // borda irregular junto ao frango
+  const riceMask = (x, z) => sstep(riceEdge(z) + .3, riceEdge(z) - .2, x);   // encosta suave, sem degrau
+  const BC = [.9, .46];                                                                          // centro do feijão
+  function beanMask(x, z) {
+    const dx = x - BC[0], dz = z - BC[1], a = Math.atan2(dz, dx), d = Math.hypot(dx, dz * .95);
+    const r = .39 + .045 * Math.sin(a * 3 + 1) + .05 * (vnoise(Math.cos(a) * 1.7 + 3, Math.sin(a) * 1.7) - .5);
+    return sstep(r + .04, r - .1, d);
+  }
+  function riceH(x, z) {
+    const wd = wallDist(x, z, .2); if (wd < .005) return -.08;     // fora da marmita: some sob a mesa
+    const dome = 1 - ((x + .62) / .8) ** 2 * .55 - (z / .95) ** 2 * .45;
+    const top = .4 + .1 * dome + .11 * (fbm(x * 3.5, z * 3.5) - .5) + .03 * (vnoise(x * 16, z * 16) - .5);
+    const under = (.15 + .04 * fbm(x * 4, z * 4)) * sstep(.75, .5, x) * (1 - beanMask(x, z));      // camada fina sob o frango e o brócolis
+    return FLOOR + Math.max(under, top * riceMask(x, z)) * (.84 + .16 * sstep(0, .14, wd));
+  }
+  const riceMat = new THREE.MeshStandardMaterial({ map: riceSpeckle(), vertexColors: true, roughness: .62 });
+  food.add(heightfield(-1.3, .8, -.92, .92, 120, riceH, (x, z, y) => {
+    const ao = (.5 + .5 * sstep(0, .16, wallDist(x, z, .2))) * (.7 + .3 * sstep(FLOOR, FLOOR + .32, y));
+    col.setRGB(.95 * ao, .92 * ao, .84 * ao); }, riceMat));
+
+  // Grãos individuais sobre a porção (tamanho, cor e inclinação variados)
+  const RICE = 3600, riceGrains = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 8, 6), new THREE.MeshStandardMaterial({ roughness: .4 }), RICE);
+  for (let i = 0, n = 0; n < RICE && i < RICE * 8; i++) {
+    const x = rr(-1.3, .3), z = rr(-.92, .92); if (riceMask(x, z) < .55 || wallDist(x, z, .4) < .025) continue;
+    dummy.position.set(x, riceH(x, z) - rr(0, .012), z);
+    dummy.rotation.set(rr(-.45, .45), rr(0, 6.3), rr(-.35, .35));
+    const k = rr(.85, 1.18); dummy.scale.set(.027 * k, .0105 * k, .0115 * k); dummy.updateMatrix();
+    riceGrains.setMatrixAt(n, dummy.matrix); riceGrains.setColorAt(n, col.setHSL(rr(.09, .12), rr(.15, .35), rr(.7, .9))); n++;
+  }
+  riceGrains.receiveShadow = true; food.add(riceGrains);
+
+  // ================= 2. Feijão =================
+  function beanH(x, z) {
+    const wd = wallDist(x, z, .25), m = beanMask(x, z); if (wd < .005) return -.08; if (m < .02) return .03;
+    const d = Math.hypot(x - BC[0], z - BC[1]);
+    return FLOOR + (.25 + .1 * (1 - (d / .5) ** 2) + .06 * (fbm(x * 7, z * 7) - .5)) * m * (.85 + .15 * sstep(0, .1, wd));
+  }
+  const brothMat = new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: .22, clearcoat: .9, clearcoatRoughness: .18 });   // caldo brilhante
+  food.add(heightfield(.35, 1.32, -.08, .95, 80, beanH, (x, z) => {
+    const ao = .45 + .55 * sstep(0, .12, wallDist(x, z, .25)); col.setRGB(.075 * ao, .022 * ao, .012 * ao); }, brothMat));
+
+  const beanGeo = new THREE.SphereGeometry(1, 16, 12);
+  { const p = beanGeo.attributes.position; for (let i = 0; i < p.count; i++) p.setZ(i, p.getZ(i) - .2 * (1 - p.getX(i) ** 2)); beanGeo.computeVertexNormals(); }  // curva de "rim"
+  const BEANS = 460, beans = new THREE.InstancedMesh(beanGeo, new THREE.MeshPhysicalMaterial({ roughness: .3, clearcoat: 1, clearcoatRoughness: .15 }), BEANS);
+  for (let i = 0, n = 0; n < BEANS && i < BEANS * 10; i++) {
+    const x = rr(.4, 1.3), z = rr(-.05, .92); if (beanMask(x, z) < .5 || wallDist(x, z, .3) < .03) continue;
+    dummy.position.set(x, beanH(x, z) - rr(.004, .02), z);
+    dummy.rotation.set(rr(-.35, .35), rr(0, 6.3), rr(-.3, .3));
+    const k = rr(.82, 1.15); dummy.scale.set(.068 * k, .038 * k * rr(.9, 1.1), .043 * k); dummy.updateMatrix();
+    beans.setMatrixAt(n, dummy.matrix);
+    beans.setColorAt(n, col.setHSL(rr(0, .03), rr(.6, .8), rng() < .15 ? rr(.07, .1) : rr(.025, .06))); n++;
+  }
+  beans.castShadow = beans.receiveShadow = true; food.add(beans);
+
+  // ================= 3. Frango grelhado =================
+  const skinTex = chickenSkin(); skinTex.repeat.set(3.2, 5);
+  const meatTex = chickenMeat(); meatTex.repeat.set(2.4, 4);
+  const meatMat = new THREE.MeshStandardMaterial({ map: meatTex, roughness: .5 });
+  const skinMat = new THREE.MeshStandardMaterial({ map: skinTex, roughness: .45 });
+  // Corte transversal de um filé: base achatada, topo arredondado e pontas irregulares
+  function chickenSlice(L, Hh, th, seed) {
+    const s = new THREE.Shape(), j = () => rr(-.04, .04);
+    s.moveTo(-L / 2, 0);
+    s.bezierCurveTo(-L / 4, -.015, L / 4, -.01, L / 2, .015);
+    s.bezierCurveTo(L / 2 + .04, Hh * (.35 + j()), L / 2 - .02, Hh * (.7 + j()), L * (.3 + j()), Hh * (.86 + j()));
+    s.bezierCurveTo(L * (.12 + j()), Hh * (1.02 + j()), -L * (.18 + j()), Hh * (1 + j()), -L * (.38 + j()), Hh * (.72 + j()));
+    s.bezierCurveTo(-L / 2 - .03, Hh * .5, -L / 2 - .02, Hh * .18, -L / 2, 0);
+    const g = new THREE.ExtrudeGeometry(s, { depth: th, curveSegments: 30, bevelEnabled: true, bevelThickness: .02, bevelSize: .018, bevelSegments: 3 });
+    g.translate(0, 0, -th / 2);
+    const p = g.attributes.position;                         // espessura e superfície levemente irregulares
+    for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+      p.setZ(i, z * (1 + .35 * (vnoise(x * 3.5 + seed, 1.3) - .5)) + .02 * (vnoise(x * 2 + seed, 7) - .5));
+      p.setY(i, y + .014 * (vnoise(x * 9 + seed, z * 9 + seed) - .5)); }
+    const m = new THREE.Mesh(g, [meatMat, skinMat]); m.castShadow = m.receiveShadow = true; return m;
+  }
+  const chicken = new THREE.Group(); chicken.position.set(.04, 0, .1); chicken.rotation.y = .32; food.add(chicken);
+  const cy = Math.cos(chicken.rotation.y), sy = Math.sin(chicken.rotation.y);
+  for (let i = 0, x = -.26; i < 6; i++) {
+    const heel = i === 5, L = heel ? .8 : (i === 0 ? .96 : rr(1.0, 1.14)), Hh = rr(.23, .29) * (heel ? .85 : 1), th = rr(.1, .145);
+    const slice = chickenSlice(L, Hh, th, i * 7.3);
+    const fx = chicken.position.x + x * cy, fz = chicken.position.z - x * sy;          // posição na marmita para achar a altura de apoio
+    const piv = new THREE.Group(); piv.position.set(x, FLOOR + .12 + .03 * vnoise(fx * 5, fz * 5) + (i === 0 ? .04 : 0), rr(-.04, .04));
+    piv.rotation.y = -Math.PI / 2 + rr(-.08, .08);                                      // comprimento do filé no sentido frente-trás
+    slice.rotation.x = i === 0 ? .82 : rr(.6, .74);                                      // cada fatia tomba sobre a anterior
+    slice.rotation.z = rr(-.05, .05);
+    piv.add(slice); chicken.add(piv);
+    x += th * 1.25 + rr(-.01, .035);
+  }
+
+  // ================= 4. Brócolis =================
+  const budGeo = new THREE.SphereGeometry(1, 12, 10);
+  { const p = budGeo.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), k = 1 + .22 * (vnoise(x * 3 + 2, y * 3 + z * 2) - .5);
+      p.setXYZ(i, x * k, y * k, z * k); } budGeo.computeVertexNormals(); }       // "pipoca" granulada da flor
+  const stemMat = new THREE.MeshStandardMaterial({ color: 0x5f7e30, roughness: .7 });
+  const buds = [];
+  const BRC = [.36, -.64];                                                              // centro do grupo
+  [[.32, -.68, 1.1], [.56, -.72, .92], [.12, -.77, .88], [.45, -.5, .8], [.7, -.58, .74], [.22, -.55, .78], [-.02, -.66, .68]].forEach(([px, pz, s]) => {
+    const g = new THREE.Group(); food.add(g);
+    g.position.set(px, riceH(px, pz) - .17 * s, pz); g.scale.setScalar(s);
+    g.rotation.set((pz - BRC[1]) * 1.1 + rr(-.15, .15), rr(0, 6.3), -(px - BRC[0]) * 1.1 + rr(-.15, .15));   // inclina para fora do grupo
+    const v = (x, y, z) => new THREE.Vector3(x, y, z);
+    const top = v(rr(-.03, .03), .27, rr(-.03, .03));
+    const stalk = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([v(0, .08, 0), v(rr(-.025, .025), .2, rr(-.025, .025)), top]), 10, .036, 8), stemMat);
+    stalk.castShadow = true; g.add(stalk);
+    const nSub = 4 + (rng() * 2 | 0);
+    for (let k = 0; k <= nSub; k++) {
+      const a = k / nSub * Math.PI * 2 + rr(-.35, .35), center = k === nSub;
+      const sub = center ? v(top.x, top.y + .1, top.z) : v(top.x + Math.cos(a) * rr(.08, .11), top.y + rr(.05, .08), top.z + Math.sin(a) * rr(.08, .11));
+      if (!center) { const br = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([top, sub]), 4, .016, 6), stemMat); g.add(br); }
+      const out = center ? v(0, 1, 0) : v(Math.cos(a) * .7, 1, Math.sin(a) * .7);
+      for (let b = 0; b < 22; b++) {
+        const d = v(rr(-1, 1), rr(-.2, 1), rr(-1, 1)).normalize().add(out).normalize();
+        const bud = new THREE.Object3D(); bud.position.copy(sub).addScaledVector(d, rr(.01, .045));
+        bud.scale.setScalar(rr(.038, .058)); bud.rotation.set(rr(0, 6), rr(0, 6), 0); g.add(bud); buds.push(bud);
+      }
+    }
+  });
+  food.updateMatrixWorld(true);
+  const toFood = new THREE.Matrix4().copy(food.matrixWorld).invert(), mtx = new THREE.Matrix4();
+  const budMesh = new THREE.InstancedMesh(budGeo, new THREE.MeshStandardMaterial({ roughness: .88 }), buds.length);
+  buds.forEach((b, i) => { budMesh.setMatrixAt(i, mtx.multiplyMatrices(toFood, b.matrixWorld));
+    budMesh.setColorAt(i, rng() < .12 ? col.setHSL(rr(.19, .22), .55, rr(.1, .15)) : col.setHSL(rr(.26, .31), rr(.5, .65), rr(.05, .11))); b.parent.remove(b); });
+  budMesh.castShadow = budMesh.receiveShadow = true; food.add(budMesh);
+
+  // ================= 5. Cenoura em cubos (empilhamento por gravidade simplificada) =================
+  const rbox = new THREE.BoxGeometry(1, 1, 1, 5, 5, 5);
+  { const p = rbox.attributes.position, r = .14, q = new THREE.Vector3(), inner = new THREE.Vector3();   // arredonda as quinas
+    for (let i = 0; i < p.count; i++) { q.fromBufferAttribute(p, i); inner.set(clamp(q.x, -.5 + r, .5 - r), clamp(q.y, -.5 + r, .5 - r), clamp(q.z, -.5 + r, .5 - r));
+      q.sub(inner).normalize().multiplyScalar(r).add(inner); p.setXYZ(i, q.x, q.y, q.z); } rbox.computeVertexNormals(); }
+  const CC = [1.0, -.44], CN = 38, cubes = [];
+  const carrots = new THREE.InstancedMesh(rbox, new THREE.MeshPhysicalMaterial({ roughness: .36, clearcoat: .35, clearcoatRoughness: .3 }), CN);
+  for (let tries = 0; cubes.length < CN && tries < 3000; tries++) {
+    const a = rr(0, 6.3), rad = Math.sqrt(rng()) * .34, x = CC[0] + Math.cos(a) * rad * .8, z = CC[1] + Math.sin(a) * rad;
+    if (wallDist(x, z, .3) < .08) continue;
+    const s = rr(.09, .14); let base = FLOOR + .01;
+    for (const c of cubes) { const d = Math.hypot(x - c.x, z - c.z), reach = (s + c.s) * .62; if (d < reach) base = Math.max(base, c.top - s * .25 - d * .35); }
+    const y = base + s * .45; if (y + s * .5 > .74) continue;
+    cubes.push({ x, z, s, top: y + s * .5 });
+    dummy.position.set(x, y, z); dummy.rotation.set(rr(-.6, .6), rr(0, 6.3), rr(-.6, .6));
+    dummy.scale.set(s * rr(.9, 1.12), s * rr(.82, 1.02), s * rr(.9, 1.12)); dummy.updateMatrix();
+    carrots.setMatrixAt(cubes.length - 1, dummy.matrix); carrots.setColorAt(cubes.length - 1, col.setHSL(rr(.052, .072), rr(.9, 1), rr(.22, .33)));
+  }
+  carrots.count = cubes.length; carrots.castShadow = carrots.receiveShadow = true; food.add(carrots);
+
+  // ================= Vapor =================
+  const SMOKE = smokeTexture();
+  const steam = Array.from({ length: 16 }, (_, i) => {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: SMOKE, color: 0xfff1e4, transparent: true, opacity: 0, depthWrite: false }));
+    s.userData = { phase: i / 16, x: rand(-1, 1), z: rand(-.6, .6), spd: rand(.18, .28) }; set.add(s); return s;
+  });
+
+  // ================= Elementos flutuantes (estado 5) =================
+  const sliceTex = tomatoSliceTexture();
+  const sliceMats = [new THREE.MeshStandardMaterial({ color: 0xa50d06, roughness: .4 }), new THREE.MeshStandardMaterial({ map: sliceTex, roughness: .35 }), new THREE.MeshStandardMaterial({ map: sliceTex, roughness: .35 })];
+  const leafShape = new THREE.Shape(); leafShape.moveTo(0, -.5); leafShape.bezierCurveTo(.35, -.25, .35, .25, 0, .55); leafShape.bezierCurveTo(-.35, .25, -.35, -.25, 0, -.5);
+  const basilMat = new THREE.MeshStandardMaterial({ color: 0x1f5a12, roughness: .5, side: THREE.DoubleSide, transparent: true });
+  const floaters = [];
+  [[-2.6, 1.9, .3, 'slice'], [2.5, 2.4, -.2, 'leaf'], [-2.0, 2.9, -.8, 'leaf'], [2.9, 1.3, .8, 'slice'], [-.6, 2.7, 1.6, 'leaf'], [1.4, 2.9, 1.2, 'slice'], [-3.0, 1.1, 1.2, 'leaf']].forEach(([x, y, z, k], i) => {
+    const m = k === 'slice' ? new THREE.Mesh(new THREE.CylinderGeometry(.3, .3, .06, 32), sliceMats.map(mm => mm.clone()))
+                            : new THREE.Mesh(new THREE.ShapeGeometry(leafShape, 12), basilMat.clone());
+    if (k === 'leaf') m.scale.setScalar(.55);
+    m.position.set(x, y, z); m.userData = { y, rx: rand(-1, 1), rz: rand(-1, 1), ph: i };
+    (Array.isArray(m.material) ? m.material : [m.material]).forEach(mm => { mm.transparent = true; mm.opacity = 0; });
+    m.castShadow = true; set.add(m); floaters.push(m);
+  });
+
+  // ================= Resize =================
+  function resize() { const w = canvas.clientWidth, h = canvas.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+  new ResizeObserver(resize).observe(canvas); resize();
+  let mx = 0, my = 0;
+  addEventListener('pointermove', e => { mx = e.clientX / innerWidth - .5; my = e.clientY / innerHeight - .5; }, { passive: true });
+
+  $('loading').style.display = 'none';
+
+  // ================= Loop =================
+  const clock = new THREE.Clock(), lookV = new THREE.Vector3(), mqMobile = matchMedia('(max-width: 860px)');
+  function frame() {
+    const t = reduced ? 0 : clock.getElapsedTime();
+    prog += (target - prog) * (reduced ? 1 : .08);              // amortecimento do scroll
+    const narrow = mqMobile.matches;                         // mesmo breakpoint do CSS
+
+    // --- Câmera e marmita guiadas pelos keyframes
+    const look = key('look'), cam = key('cam');
+    let gx = key('gx');
+    const finIn = S(4, 5);
+    if (narrow) { gx = 0; look[0] = lerp(look[0], 0, finIn); look[1] = lerp(look[1], -1.0, finIn); }  // no celular o texto fica embaixo
+    const fit = clamp(1.6 / camera.aspect, 1, 2.3);               // afasta a câmera em telas estreitas
+    camera.position.set(look[0] + (cam[0] - look[0]) * fit + mx * .4, look[1] + (cam[1] - look[1]) * fit - my * .3, look[2] + (cam[2] - look[2]) * fit);
+    camera.lookAt(lookV.set(...look));
+
+    set.position.x = gx;
+    box.rotation.y = key('rotY') + (reduced ? 0 : Math.sin(t * .4) * .03);
+    lidPivot.rotation.x = key('lid');
+    spot.target.position.set(gx, 0, 0);
+
+    // --- Vapor: começa quando a tampa abre
+    const steamA = S(1.4, 2.2) * (1 - .4 * S(4.3, 5));
+    steam.forEach(s => { const u = s.userData, life = ((t * u.spd + u.phase) % 1);
+      s.position.set(u.x * .9 + Math.sin(t * .7 + u.phase * 9) * .15 * life, .8 + life * 2.3, u.z);
+      const sc = .7 + life * 1.6; s.scale.set(sc, sc, 1);
+      s.material.opacity = Math.sin(Math.PI * life) * .2 * steamA; s.visible = steamA > .01; });
+
+    // --- Tomates e manjericão flutuando na visão completa
+    const flo = S(3.4, 4.2) * (1 - S(4.4, 5));
+    floaters.forEach(m => { const u = m.userData;
+      m.position.y = u.y + Math.sin(t * .9 + u.ph) * .12 + (1 - flo) * -.4;
+      m.rotation.set(u.rx + t * .3 * u.rx, t * .2, u.rz + Math.sin(t * .5 + u.ph) * .3);
+      (Array.isArray(m.material) ? m.material : [m.material]).forEach(mm => mm.opacity = flo); m.visible = flo > .01; });
+
+    renderer.render(scene, camera);
+
+    // --- Texto e botão do estado final
+    const fx = S(4.35, 4.95);
+    finalEl.style.opacity = fx;
+    finalEl.style.transform = narrow ? `translateY(${(1 - fx) * 20}px)` : `translate(${(1 - fx) * 30}px,-50%)`;
+    finalEl.classList.toggle('live', fx > .5);
+
+    // --- UI de etapas
+    const idx = clamp(Math.round(prog), 0, 5);
+    if (idx !== lastIdx) { lastIdx = idx;
+      lblT.textContent = STEPS[idx][0]; lblD.textContent = STEPS[idx][1]; }
+    barFill.style.transform = `scaleX(${prog / 5})`;
+    hint.style.opacity = 1 - clamp(prog * 2.5, 0, 1);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

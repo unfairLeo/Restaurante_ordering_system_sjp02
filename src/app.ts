@@ -1,5 +1,6 @@
 import express from "express";
 import type { ErrorRequestHandler } from "express";
+import { fileURLToPath } from "node:url";
 import swaggerUi from "swagger-ui-express";
 import { openApiSpec } from "./openapi.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
@@ -7,18 +8,10 @@ import productRoutes from "./routes/productRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 
 const app = express();
+const staticDirectory = fileURLToPath(new URL("../static/", import.meta.url));
+
 app.use(express.json());
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(openApiSpec));
-
-// =====================
-// Root
-// =====================
-app.get("/", (req, res) => {
-    res.status(200).json({
-        message: "Restaurant Ordering System - API",
-        version: "1.0.0",
-    });
-});
 
 // =====================
 // Categories(CATEGORIAS)
@@ -34,6 +27,8 @@ app.use("/products", productRoutes);
 // Orders(PEDIDOS)
 // =====================
 app.use("/orders", orderRoutes);
+
+app.use(express.static(staticDirectory));
 
 app.use((_req, res) => {
     res.status(404).json({

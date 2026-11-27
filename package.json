@@ -25,6 +25,7 @@
   "main": "dist/server.js",
   "scripts": {
     "test": "node --import=tsx/esm --test src/tests/*.ts",
+    "test:integration": "node --import=tsx/esm --test src/tests/integration/*.ts",
     "dev": "node --watch --env-file=.env --import=tsx/esm src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js"
